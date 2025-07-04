@@ -1,17 +1,43 @@
-project('voxel-engine', 'cpp', version: '0.1.0', license: 'AGPL 3.0', default_options: ['cpp_std=c++23']) 
+project('voxel-engine', 'cpp', version: '0.1.0', license: 'AGPL 3.0', default_options: ['cpp_std=c++20'], meson_version: '>=1.4.0') 
+
+fs = import('fs')
+
+warning_level = 'everything' 
 
 if get_option('buildtype') == 'release'
   add_global_arguments('-O2', language: 'cpp')
 else
   add_global_arguments('-g3', '-ggdb', language: 'cpp')
 endif
+add_global_arguments('-Wshadow', '-Wnon-virtual-dtor', language: 'cpp')
 
 glbinding_dep = dependency('glbinding')
-glfw_dep = dependency('glfw')
+glfw_dep = dependency('glfw3')
+spdlog_dep = dependency('spdlog')
+glm_dep = dependency('glm')
 
 inc = include_directories('include')
 subdir('include')
 subdir('src')
 subdir('test')
 
-executable('voxel-engine', voxel_engine_srcs, include_directories: inc, dependencies: [glbinding_dep, glfw_dep])
+shaders_str = []
+foreach shader : shaders
+  shaders_str += fs.name(shader)
+endforeach
+
+validate_shaders = custom_target(
+  'Validate Shaders',
+  input: shaders,
+  output: ['asdf'],
+  command: ['glslang', '@INPUT@']
+)
+
+copy_shaders = custom_target(
+  'Copy Shaders',
+  input: shaders,
+  output: shaders_str,
+  command: ['cp', '@INPUT@', '@BUILD_ROOT@']
+)
+
+executable('voxel-engine', voxel_engine_srcs + validate_shaders + copy_shaders, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep])

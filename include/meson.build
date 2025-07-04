@@ -1,1 +1,1 @@
-install_headers('common.hpp')
+install_headers('common.hpp', 'vertex.hpp')
