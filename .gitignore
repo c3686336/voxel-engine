@@ -43,4 +43,4 @@
 # Workflow specific
 .cache/
 build/
-compile-commands.json
+compile_commands.json
