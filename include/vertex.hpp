@@ -10,7 +10,12 @@ typedef struct Vertex {
 //	glm::vec2 uv;
 } Vertex;
 
-Vertex triangle[3] = {{{-0.5f, -0.5f, 0.0f}}, {{0.5f, 0.5f, 0.0f}}, {{0.0f, 0.5f, 0.0f}}};
-uint32_t triangle_indices[3] = {0, 1, 2};
+const Vertex fullscreen_quad[] = {
+	{{-1.0f, -1.0f, 0.0f}},
+	{{3.0f, -1.0f, 0.0f}},
+	{{-1.0f, 3.0f, 0.0f}}
+};
+
+const uint32_t fullscreen_indices[] = {0, 1, 2};
 
 #endif

@@ -117,12 +117,12 @@ int main(int argc, char **argv) {
 
     GLuint vbo;
     glCreateBuffers(1, &vbo);
-    glNamedBufferStorage(vbo, sizeof(Vertex)*3, triangle, GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(vbo, sizeof(Vertex)*3, fullscreen_quad, GL_DYNAMIC_STORAGE_BIT);
     SPDLOG_INFO("Created VBO");
 
 	GLuint ibo;
 	glCreateBuffers(1, &ibo);
-	glNamedBufferStorage(ibo, sizeof(uint32_t)*3, triangle_indices, GL_DYNAMIC_STORAGE_BIT);
+	glNamedBufferStorage(ibo, sizeof(uint32_t)*3, fullscreen_indices, GL_DYNAMIC_STORAGE_BIT);
 	SPDLOG_INFO("Created IBO");
 
     GLuint vao;
