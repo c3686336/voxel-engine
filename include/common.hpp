@@ -11,20 +11,6 @@
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
 
-std::string load_file(const std::filesystem::path& path) {
-	std::ifstream file(path);
-
-	if (!file.is_open()) {
-		SPDLOG_CRITICAL("Could not open the file {}", path.string());
-		exit(1);
-	}
-
-	std::ostringstream contents;
-	contents << file.rdbuf();
-
-	SPDLOG_INFO("File loaded. Content: {}", contents.str());
-
-	return contents.str();
-}
+std::string load_file(const std::filesystem::path& path);
 
 #endif

@@ -1,6 +1,7 @@
 subdir('svodag')
 subdir('shaders')
 
-voxel_engine_srcs = files('main.cpp')
+voxel_engine_srcs = files('renderer.cpp', 'common.cpp')
 voxel_engine_srcs += svodag_srcs
+main_src = files('main.cpp')
 

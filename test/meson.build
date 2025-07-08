@@ -1,1 +1,1 @@
-test_srcs = []
+test_srcs = files('test.cpp')
