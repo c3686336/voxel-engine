@@ -28,7 +28,6 @@ TEST_CASE( "Svo-Dag Construction", "[svodag]") {
 
 	// svodag.insert(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-	glm::vec4 result = svodag.get(glm::vec3(0.0f, 0.0f, 0.0f));
 	// CAPTURE(result.r, result.g, result.b, result.a);
 
 	REQUIRE(svodag.get(glm::vec3(0.0f, 0.0f, 0.0f)) == glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -63,3 +62,11 @@ TEST_CASE("SVODAG insertion", "[svodag]") {
 		}
 	}
 }
+
+// TEST_CASE("SVODAG Serialization", "[svodag]") {
+// 	SvoDag tree{3};
+// 	auto asdf = tree.serialize();
+// 	INFO(std::format("{}", asdf));
+
+// 	REQUIRE(std::format("{}", asdf) == std::string("[Color: [vec4(0.000000, 0.000000, 0.000000, 0.000000)], Connected to: [0, 0, 0, 0, 0, 0, 0, 0], Color: [vec4(0.000000, 0.000000, 0.000000, 0.000000)], Connected to: [0, 0, 0, 0, 0, 0, 0, 0]]"));
+// }

@@ -1,4 +1,4 @@
-project('voxel-engine', 'cpp', version: '0.1.0', license: 'AGPL 3.0', default_options: ['cpp_std=c++20'], meson_version: '>=1.4.0') 
+project('voxel-engine', 'cpp', version: '0.1.0', license: 'AGPL 3.0', default_options: ['cpp_std=c++23'], meson_version: '>=1.4.0') 
 
 fs = import('fs')
 
@@ -16,6 +16,7 @@ glfw_dep = dependency('glfw3')
 spdlog_dep = dependency('spdlog')
 glm_dep = dependency('glm')
 catch2_dep = dependency('catch2-with-main')
+fmt_dep = dependency('fmt')
 
 inc = include_directories('include')
 subdir('include')
@@ -41,7 +42,7 @@ copy_shaders = custom_target(
   command: ['cp', '@INPUT@', '@BUILD_ROOT@']
 )
 
-executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep])
+executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, fmt_dep])
 
 test = executable('voxel-engine-test', test_srcs + voxel_engine_srcs, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep])
 test('Test', test)

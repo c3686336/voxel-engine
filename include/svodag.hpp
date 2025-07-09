@@ -16,6 +16,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <format>
 
 typedef uint16_t Addr_t; // Have to fix the paddings before changing this type
 
@@ -35,6 +36,19 @@ typedef struct {
     // Total size = 32B, needs to be padded to 32B = 16B * 3
 } SerializedNode;
 // Good enough for now
+
+template <typename CharT>
+struct std::formatter<SerializedNode, CharT> {
+    template <typename FormatParseContext>
+	constexpr auto parse(FormatParseContext& pc) {
+		return pc.begin();
+	}
+
+	template<typename FormatContext>
+	auto format(SerializedNode p, FormatContext& fc) const {
+		return std::format_to(fc.out(), "{{Color: {}, Connected to: [{}, {}, {}, {}, {}, {}, {}, {}]}}\n", p.color, p.addr[0], p.addr[1], p.addr[2], p.addr[3], p.addr[4], p.addr[5], p.addr[6], p.addr[7]);
+	}
+};
 
 // Definitions
 class SvoNode {
@@ -67,9 +81,12 @@ public:
 class SvoDag {
 public:
     SvoDag() noexcept;
+    SvoDag(size_t level) noexcept;
 
-    void insert(glm::vec3 pos, glm::vec4 new_color) noexcept;
-    const glm::vec4 get(glm::vec3 pos) const noexcept;
+    void insert(const glm::vec3& pos, const glm::vec4& new_color) noexcept;
+    void insert(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask, glm::vec4 color) noexcept;
+    const glm::vec4 get(const glm::vec3& pos) const noexcept;
+    const glm::vec4 get(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask) const noexcept;
 
     const std::vector<SerializedNode> serialize() const noexcept;
 

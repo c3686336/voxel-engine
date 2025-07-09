@@ -1,4 +1,5 @@
 #include "svodag.hpp"
+#include "formatter.hpp"
 #include "spdlog/spdlog.h"
 
 #include <utility>
@@ -7,9 +8,9 @@ size_t bitmask_to_index(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
     size_t level
 ) {
-    size_t index = (((x_bitmask >> level) & 0b1) << 2) +
-                   (((y_bitmask >> level) & 0b1) << 1) +
-                   (((z_bitmask >> level) & 0b1) << 0);
+    size_t index = (((x_bitmask >> (level - 1)) & 0b1) << 2) +
+                   (((y_bitmask >> (level - 1)) & 0b1) << 1) +
+                   (((z_bitmask >> (level - 1)) & 0b1) << 0);
 
     if (index >= 8) {
         SPDLOG_CRITICAL(
@@ -130,13 +131,19 @@ SvoNode::get_children() const noexcept {
 }
 
 SvoDag::SvoDag() noexcept : root(), level(8 /*2^8^3 = 256^3 voxels*/){};
-void SvoDag::insert(glm::vec3 pos, glm::vec4 color) noexcept {
+SvoDag::SvoDag(size_t level) noexcept : root(), level(level){};
+
+void SvoDag::insert(const glm::vec3& pos, const glm::vec4& color) noexcept {
     size_t x_bitmask = pos.x * (1 << level);
     size_t y_bitmask = pos.y * (1 << level);
     size_t z_bitmask = pos.z * (1 << level);
 
-    root.insert(x_bitmask, y_bitmask, z_bitmask, level, color);
+	insert(x_bitmask, y_bitmask, z_bitmask, color);
 };
+
+void SvoDag::insert(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask, glm::vec4 color) noexcept {
+    root.insert(x_bitmask, y_bitmask, z_bitmask, level, color);
+}
 
 const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     // TODO;
@@ -150,8 +157,8 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
         if (root.children[i] &&
             !map.contains(root.children[i]
             ) /*This check is needed even now because of deduplication*/) {
-            map[root.children[i]] = cnt;
             cnt++;
+            map[root.children[i]] = cnt;
 
             bfs_queue.push(root.children[i]);
         }
@@ -163,10 +170,10 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
 
         for (int i = 0; i < 8; i++) {
             if (node->children[i] && !map.contains(node->children[i])) {
-                map[node->children[i]] = cnt;
                 cnt++;
+                map[node->children[i]] = cnt;
 
-                bfs_queue.push(root.children[i]);
+                bfs_queue.push(node->children[i]);
             }
         }
     }
@@ -174,41 +181,42 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     // Now, cnt is the number of nodes
     std::vector<SerializedNode> buffer(cnt + 1, SerializedNode{});
 
-    buffer[1] = SerializedNode{
-        root.color, std::array{
-                        map[root.children[0]],
-                        map[root.children[1]],
-                        map[root.children[2]],
-                        map[root.children[3]],
-                        map[root.children[4]],
-                        map[root.children[5]],
-                        map[root.children[6]],
-                        map[root.children[7]],
-                    }};
+	SPDLOG_INFO(cnt);
+
+    buffer[1] = SerializedNode{root.color, std::array<Addr_t, 8>{0}};
+	for (int i=0;i<8;i++) {
+		if (root.children[i]) {
+			buffer[1].addr[i] = map[root.children[i]];
+		}
+	}
 
 	for (auto i=map.begin();i!=map.end();i++) {
+        SPDLOG_INFO(std::format("{}", i->second));
+		
 		buffer[i->second] = SerializedNode {
 			i->first->color,
-			std::array{
-				map[i->first->children[0]],
-				map[i->first->children[1]],
-				map[i->first->children[2]],
-				map[i->first->children[3]],
-				map[i->first->children[4]],
-				map[i->first->children[5]],
-				map[i->first->children[6]],
-				map[i->first->children[7]],
-				}
+			std::array<Addr_t, 8>{0}
 			};
+
+		for (int j=0;j<8;j++) {
+			if (i->first->children[j]) {
+				buffer[i->second].addr[j] = map[i->first->children[j]];
+			}
+		}
 	}
 
     return buffer;
 }
 
-const glm::vec4 SvoDag::get(glm::vec3 pos) const noexcept {
+const glm::vec4 SvoDag::get(const glm::vec3& pos) const noexcept {
     size_t x_bitmask = pos.x * (1 << level);
     size_t y_bitmask = pos.y * (1 << level);
     size_t z_bitmask = pos.z * (1 << level);
 
-    return root.get(x_bitmask, y_bitmask, z_bitmask, level);
+	return get(x_bitmask, y_bitmask, z_bitmask);
+}
+
+
+const glm::vec4 SvoDag::get(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask) const noexcept {
+	return root.get(x_bitmask, y_bitmask, z_bitmask, level);
 }
