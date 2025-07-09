@@ -1,14 +1,21 @@
 #include "svodag.hpp"
+#include "spdlog/spdlog.h"
 
-size_t bitmask_to_index(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask, size_t level) {
-    size_t index = ((x_bitmask & (0b1 << (level - 1))) >> (level - 1) << 2) +
-                   ((y_bitmask & (0b1 << (level - 1))) >> (level - 1) << 1) +
-                   ((z_bitmask & (0b1 << (level - 1))) >> (level - 1));
-#ifdef DEBUG
+#include <utility>
+
+size_t bitmask_to_index(
+    const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
+    size_t level
+) {
+    size_t index = (((x_bitmask >> level) & 0b1) << 2) +
+                   (((y_bitmask >> level) & 0b1) << 1) +
+                   (((z_bitmask >> level) & 0b1) << 0);
+
     if (index >= 8) {
-        SPDLOG_CRIT("The index calculation is probably wrong. the value = {}", index);
+        SPDLOG_CRITICAL(
+            "The index calculation is probably wrong. the value = {}", index
+        );
     }
-#endif
 
     return index;
 }
@@ -65,6 +72,16 @@ void SvoNode::insert(
         // Allocate them
         children[index] = std::make_shared<SvoNode>();
     }
+#ifdef DAG
+    // If the node has been de-duped
+    // This check does not work if there is external reference to this node;
+    // Unlikely. However, be careful not to call this function while serializing
+    // or dedupping
+    if (children[index].use_count() != 1) {
+        // deep-copy the node
+        children[index] = std::make_shared<SvoNode>(*children[index]);
+    }
+#endif
 
     children.at(index)->insert(
         std::move(x_bitmask), std::move(y_bitmask), std::move(z_bitmask),
@@ -92,7 +109,9 @@ glm::vec4 SvoNode::get(
     if (!children[index]) {
         return color;
     } else {
-        return get(x_bitmask, y_bitmask, z_bitmask, level - 1);
+        return children.at(index)->get(
+            x_bitmask, y_bitmask, z_bitmask, level - 1
+        );
     }
 }
 
@@ -122,58 +141,66 @@ void SvoDag::insert(glm::vec3 pos, glm::vec4 color) noexcept {
 const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     // TODO;
     // Traverse the tree(dag) in a breath-first order, make an array, use
-    // pointer arithmetic to retrieve the index Write it
 
-    std::vector<SerializedNode> buffer;
+    Addr_t cnt = 1; // Because the root node won't be included;
+    std::unordered_map<std::shared_ptr<SvoNode>, Addr_t> map;
+    std::queue<std::shared_ptr<SvoNode>> bfs_queue;
 
-    std::unordered_set<std::shared_ptr<SvoNode>> visited;
-    std::queue<std::shared_ptr<SvoNode>> to_visit;
-
-    buffer.push_back(
-        {glm::vec4(0.0f),
-         {
-             0,
-         }}
-    );
-
-    buffer.push_back(
-        {root.get_color(),
-         {
-             0,
-         }}
-    );
-
-    int cnt = 1;
     for (int i = 0; i < 8; i++) {
-        if (root.get_children()[i]) {
-            buffer.back().addr[i] = cnt;
+        if (root.children[i] &&
+            !map.contains(root.children[i]
+            ) /*This check is needed even now because of deduplication*/) {
+            map[root.children[i]] = cnt;
             cnt++;
-            to_visit.push(root.get_children()[i]);
-        } else {
-            buffer.back().addr[i] = 0;
+
+            bfs_queue.push(root.children[i]);
         }
     }
 
-    while (!to_visit.empty()) {
-        auto node = to_visit.back();
-        to_visit.pop();
-
-        if (visited.contains(node)) {
-            continue;
-        }
-
-        visited.insert(node);
+    while (!bfs_queue.empty()) {
+        auto node = bfs_queue.front();
+        bfs_queue.pop();
 
         for (int i = 0; i < 8; i++) {
-            if (node->get_children()[i]) {
-                buffer.back().addr[i] = buffer.size();
-                to_visit.push(node->get_children()[i]);
-                // This will work because the queue is sorta like a view?
-            } else {
-                buffer.back().addr[i] = 0;
+            if (node->children[i] && !map.contains(node->children[i])) {
+                map[node->children[i]] = cnt;
+                cnt++;
+
+                bfs_queue.push(root.children[i]);
             }
         }
     }
+
+    // Now, cnt is the number of nodes
+    std::vector<SerializedNode> buffer(cnt + 1, SerializedNode{});
+
+    buffer[1] = SerializedNode{
+        root.color, std::array{
+                        map[root.children[0]],
+                        map[root.children[1]],
+                        map[root.children[2]],
+                        map[root.children[3]],
+                        map[root.children[4]],
+                        map[root.children[5]],
+                        map[root.children[6]],
+                        map[root.children[7]],
+                    }};
+
+	for (auto i=map.begin();i!=map.end();i++) {
+		buffer[i->second] = SerializedNode {
+			i->first->color,
+			std::array{
+				map[i->first->children[0]],
+				map[i->first->children[1]],
+				map[i->first->children[2]],
+				map[i->first->children[3]],
+				map[i->first->children[4]],
+				map[i->first->children[5]],
+				map[i->first->children[6]],
+				map[i->first->children[7]],
+				}
+			};
+	}
 
     return buffer;
 }

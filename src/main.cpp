@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "vertex.hpp"
 #include "renderer.hpp"
+#include "svodag.hpp"
+#include "formatter.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>

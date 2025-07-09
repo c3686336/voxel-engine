@@ -14,7 +14,10 @@
 #include <queue>
 #include <ranges>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
+
+typedef uint16_t Addr_t; // Have to fix the paddings before changing this type
 
 // Refer to the glsl std430 specification for correct padding/alignment. IDK yet
 // bool, uint, int, float, double (scalars): no padding, alignment = size
@@ -26,7 +29,7 @@ typedef struct {
     glm::vec4 color; // 16 bytes
     // Read as single vec4, overall size 16B
 
-    std::uint16_t addr[8]; // 16B (for now)
+    std::array<Addr_t, 8> addr; // 16B (for now)
                            // Two are read as single uint, overall size 4B;
 
     // Total size = 32B, needs to be padded to 32B = 16B * 3
@@ -55,7 +58,6 @@ public:
 
     friend void swap(SvoNode& first, SvoNode& second);
 
-private:
     glm::vec4 color;
     // std::shared_ptr<std::array<SvoNode, 8>>
     //    children; // TODO swap shared_ptr and array
