@@ -44,5 +44,7 @@ copy_shaders = custom_target(
 
 executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, fmt_dep])
 
+executable('raymarcher', raymarcher_src + voxel_engine_srcs, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, fmt_dep])
+
 test = executable('voxel-engine-test', test_srcs + voxel_engine_srcs, include_directories: inc, dependencies: [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep])
 test('Test', test)

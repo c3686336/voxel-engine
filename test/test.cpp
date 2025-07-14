@@ -70,3 +70,16 @@ TEST_CASE("SVODAG insertion", "[svodag]") {
 
 // 	REQUIRE(std::format("{}", asdf) == std::string("[Color: [vec4(0.000000, 0.000000, 0.000000, 0.000000)], Connected to: [0, 0, 0, 0, 0, 0, 0, 0], Color: [vec4(0.000000, 0.000000, 0.000000, 0.000000)], Connected to: [0, 0, 0, 0, 0, 0, 0, 0]]"));
 // }
+
+TEST_CASE("SVODAG insertion at x=0, y=128, z=128", "[svodag]") {
+	SvoDag svodag{8};
+
+	svodag.insert(0, 128, 128, glm::vec4(1.0f));
+	REQUIRE(svodag.get(0, 128, 128) == glm::vec4(1.0f));
+}
+
+TEST_CASE("level_to_size function works properly", "[svodag] [util]") {
+	REQUIRE(level_to_size(8, 8) == 1.0f);
+	REQUIRE(level_to_size(7, 8) == 0.5f);
+	REQUIRE(level_to_size(6, 8) == 0.25f);
+}
