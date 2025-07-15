@@ -16,8 +16,10 @@ glfw_dep = dependency('glfw3')
 spdlog_dep = dependency('spdlog')
 glm_dep = dependency('glm')
 catch2_dep = dependency('catch2-with-main')
+stb_subproj = subproject('stb')
+stb_dep = stb_subproj.get_variable('stb_dep')
 
-deps = [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep]
+deps = [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep, stb_dep]
 
 inc = include_directories('include')
 subdir('include')
