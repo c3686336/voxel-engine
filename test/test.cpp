@@ -83,3 +83,27 @@ TEST_CASE("level_to_size function works properly", "[svodag] [util]") {
 	REQUIRE(level_to_size(7, 8) == 0.5f);
 	REQUIRE(level_to_size(6, 8) == 0.25f);
 }
+
+TEST_CASE("Svodag query", "[svodag]") {
+	SvoDag svodag{8};
+	
+	for (size_t x = 0; x < 256; x++) {
+        for (size_t y = 0; y < 256; y++) {
+            for (size_t z = 0; z < 256; z++) {
+                size_t length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
+                                (z - 128) * (z - 128);
+                if (16383 < length && length < 16385) {
+                    svodag.insert(
+                        x, y, z,
+                        glm::vec4(
+                            (float)x / 256.0f, (float)y / 256.0f, z / 256.0f,
+                            1.0f
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+	svodag.query(glm::vec3(0.0f, 0.0f, 0.0f));
+}

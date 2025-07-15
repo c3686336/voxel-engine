@@ -127,9 +127,9 @@ inline const float level_to_size(const size_t level, const size_t max_level) {
 
 inline const glm::vec3 snap_pos(const glm::vec3 pos, size_t level) {
     return glm::vec3(
-		floorf(pos.x * (1 << level)) / pow(0.5f, level),
-		floorf(pos.y * (1 << level)) / pow(0.5f, level),
-		floorf(pos.y * (1 << level)) / pow(0.5f, level)
+		floorf(pos.x * (1 << level)) * pow(0.5f, level),
+		floorf(pos.y * (1 << level)) * pow(0.5f, level),
+		floorf(pos.y * (1 << level)) * pow(0.5f, level)
 	);
 }
 

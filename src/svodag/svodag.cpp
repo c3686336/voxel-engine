@@ -158,10 +158,7 @@ const std::optional<QueryResult> SvoNode::query(
 
     } else {
 		// Same here: If there are no children (As guaranteed), return this.
-        return std::make_optional<QueryResult>(
-			std::shared_ptr<SvoNode>(nullptr),
-			level - 1
-		);
+        return std::nullopt;
     }
 }
 
