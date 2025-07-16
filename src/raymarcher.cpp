@@ -92,6 +92,8 @@ raymarch(const SvoDag& svodag, const Ray ray) {
 
     do {
         // Get the deepest node that intersects the point
+        glm::vec3 bias = ray.dir * level_to_size(0, 8) * 0.01f;
+        current_pos += bias;
         QueryResult result =
             svodag.query(current_pos); // Without bias as first test
 
@@ -108,12 +110,14 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         float size = level_to_size(result.at_level, level);
 
         // glm::vec3 biased_pos = current_pos + size*0.1f*ray.dir;
-        glm::vec3 current_voxel_start = snap_pos(current_pos, level);
+        glm::vec3 current_voxel_start = snap_pos(current_pos + bias, level);
         glm::vec3 sign(
             current_voxel_start.x == current_pos.x ? dir_sign.x : +1,
             current_voxel_start.y == current_pos.y ? dir_sign.y : +1,
             current_voxel_start.z == current_pos.z ? dir_sign.z : +1
         );
+
+        // assert(current_voxel_start.x == current_pos.x || current_voxel_start.y == current_pos.y || current_voxel_start.z == current_pos.z);
 
         glm::vec3 current_voxel_end =
             current_voxel_start + glm::vec3(size) * sign;
@@ -137,7 +141,7 @@ raymarch(const SvoDag& svodag, const Ray ray) {
              current_pos.z > 0.0f && current_pos.x < 1.0f &&
              current_pos.y < 1.0f && current_pos.z < 1.0f);
 
-    return glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    return glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 }
 
 int main(int argc, char** argv) {
@@ -145,19 +149,24 @@ int main(int argc, char** argv) {
     SPDLOG_INFO("Program Started");
 
     SPDLOG_INFO("Constructing SvoDag");
-    SvoDag svodag{8}; // width = 256;
 
-    for (long x = 0; x < 256; x++) {
-        for (long y = 0; y < 256; y++) {
-            for (long z = 0; z < 256; z++) {
-                long length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
-                              (z - 128) * (z - 128);
-                if (10000 < length && length <= 16384) {
+    size_t depth = 3;
+    SvoDag svodag{depth}; // width = 256;
+
+    long limit = 1<<depth;
+    for (long x = 0; x < limit; x++) {
+        for (long y = 0; y < limit; y++) {
+            for (long z = 0; z < limit; z++) {
+                long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
+                              (z - (limit>>1)) * (z - (limit>>1));
+                if (0 < length && length <= (limit>>1)*(limit>>1))
+                // if (x == 1) 
+                {
                     svodag.insert(
                         x, y, z,
                         glm::vec4(
-                            (float)x / 256.0f, (float)y / 256.0f,
-                            (float)z / 256.0f, 1.0f
+                            (float)x / (float)limit, (float)y / (float)limit,
+                            (float)z / (float)limit, 1.0f
                         )
                     );
                 }
