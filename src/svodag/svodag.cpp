@@ -103,7 +103,7 @@ void SvoNode::insert(
     }
 }
 
-glm::vec4 SvoNode::get(
+const glm::vec4 SvoNode::get(
     size_t x_bitmask, size_t y_bitmask, size_t z_bitmask, size_t level
 ) const noexcept {
     if (level == 0) {
@@ -269,5 +269,5 @@ const QueryResult SvoDag::query(const glm::vec3 pos) const noexcept {
 	auto result = root->query(x_bitmask, y_bitmask, z_bitmask, level);
 	// TODO: In order to support max_level, SvoNode::query needs to be refactored
 
-    return std::move(result).value_or({root, level});
+    return result.value_or({root, level});
 }

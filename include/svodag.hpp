@@ -75,7 +75,7 @@ public:
         const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
         const size_t level, const glm::vec4 new_color
     ) noexcept;
-    glm::vec4
+    const glm::vec4
     get(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
         const size_t level) const noexcept;
     const glm::vec4 get_color() const noexcept;
@@ -113,14 +113,14 @@ public:
     const QueryResult query(const glm::vec3 pos) const noexcept;
 
     const std::vector<SerializedNode> serialize() const noexcept;
-    inline const size_t get_level() const noexcept { return level; }
+    inline size_t get_level() const noexcept { return level; }
 
 private:
     std::shared_ptr<SvoNode> root;
     size_t level; // *Height* of the octree
 };
 
-inline const float level_to_size(const size_t level, const size_t max_level) {
+inline float level_to_size(const size_t level, const size_t max_level) {
     return powf(0.5f, (float)(max_level - level));
 }
 
