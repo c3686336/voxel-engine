@@ -30,9 +30,8 @@ typedef struct {
     glm::vec4 color; // 16 bytes
     // Read as single vec4, overall size 16B
 
-    std::array<Addr_t, 8>
-        addr; // 32B (for now)
-              // One is read as a single uint, overall size 4B;
+    std::array<Addr_t, 8> addr; // 32B (for now)
+    // One is read as a single uint, overall size 4B;
 
     // Total size = 48B, needs to be padded to 48B = 16B * 3
 } SerializedNode;
@@ -122,15 +121,18 @@ private:
 };
 
 inline const float level_to_size(const size_t level, const size_t max_level) {
-    return powf(0.5f, float(max_level - level));
+    return powf(0.5f, (float)(max_level - level));
 }
 
 inline const glm::vec3 snap_pos(const glm::vec3 pos, size_t level) {
     return glm::vec3(
-		floorf(pos.x * (1 << level)) * pow(0.5f, level),
-		floorf(pos.y * (1 << level)) * pow(0.5f, level),
-		floorf(pos.y * (1 << level)) * pow(0.5f, level)
-	);
+        floorf(pos.x * (1 << level)) * powf(0.5f, (float)level),
+        floorf(pos.y * (1 << level)) * powf(0.5f, (float)level),
+        floorf(pos.z * (1 << level)) * powf(0.5f, (float)level)
+    );
 }
+
+
+std::tuple<size_t, size_t, size_t> pos_to_bitmask(const glm::vec3 pos, size_t level) noexcept ;
 
 #endif

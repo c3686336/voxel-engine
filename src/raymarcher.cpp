@@ -26,80 +26,118 @@ std::array<std::byte, 4> float_to_255(const glm::vec4 float_color) {
     };
 }
 
+inline std::pair<float, float> slab_test(
+    const glm::vec3 cor1, const glm::vec3 cor2, const glm::vec3 pos,
+    const glm::vec3 dir_inv
+) {
+    using std::min, std::max;
+
+    // https://tavianator.com/2015/ray_box_nan.html
+    glm::vec3 t1 = (cor1 - pos) * dir_inv;
+    glm::vec3 t2 = (cor2 - pos) * dir_inv;
+
+    float tmin = min(t1.x, t2.x);
+    float tmax = max(t1.x, t2.x);
+
+    // Eliminates NaN problem
+    tmin = max(tmin, min(min(t1.y, t2.y), tmax));
+    tmax = min(tmax, max(max(t1.y, t2.y), tmin));
+
+    tmin = max(tmin, min(min(t1.z, t2.z), tmax));
+    tmax = min(tmax, max(max(t1.z, t2.z), tmin));
+
+    return std::make_pair(tmin, tmax);
+}
+
 glm::vec4 /*Voxel Color*/
 raymarch(const SvoDag& svodag, const Ray ray) {
+#ifndef NDEBUG
+    static int invocation_id = 0;
+    invocation_id++;
+#endif
+
     // This is only an example implementation
 
-    const glm::vec3 bias = ray.dir * level_to_size(svodag.get_level(), 0) /
-                           4.0f; // A small bias for ensuring that the ray's
-                                 // endpoint always intersects a voxel
+    // endpoint always intersects a voxel
 
     /*Assume that the svodag always spans (0, 0, 0) ~ (1, 1, 1)*/
     size_t level = svodag.get_level();
-    glm::vec3 dir_inv =
-        glm::vec3(1.0 / ray.dir.x, 1.0 / ray.dir.y, 1.0 / ray.dir.z);
+    glm::vec3 dir_inv(1.0 / ray.dir.x, 1.0 / ray.dir.y, 1.0 / ray.dir.z);
+    glm::vec3 dir_sign(
+        ray.dir.x >= 0 ? 1 : -1, ray.dir.y >= 0 ? 1 : -1,
+        ray.dir.z >= 0 ? 1 : -1
+    );
 
-    // Ray-AABB Intersection
-    // TODO: Separate this out into another function
-    // Branchless Ray-AABB intersection by
-    // https://tavinator.com/2011/ray_box.html
-    float tx1 = -ray.origin.x * dir_inv.x; // Handles dir.x == 0 case
-    float tx2 = (1 - ray.origin.x) * dir_inv.x;
+    auto [tmin, tmax] = slab_test(glm::vec3(0.0f), glm::vec3(1.0f), ray.origin, dir_inv);
+    
+    tmin = std::max(0.0f, tmin);
 
-    float tmin = std::min(tx1, tx2);
-    float tmax = std::min(tx1, tx2);
-
-    float ty1 = -ray.origin.y * dir_inv.y; // ,,
-    float ty2 = (1 - ray.origin.y) * dir_inv.y;
-
-    tmin = std::min(std::max(ty1, ty2), tmin);
-    tmax = std::max(std::min(ty1, ty2), tmax);
-
-    float tz1 = -ray.origin.z * dir_inv.z; // ,,
-    float tz2 = (1 - ray.origin.z) * dir_inv.z;
-
-    tmin = std::min(std::max(tz1, tz2), tmin);
-    tmax = std::max(std::min(tz1, tz2), tmax);
-
-    bool intersected = (tmax >= tmin) && tmin >= 0.f;
+    bool intersected = (tmax > tmin);
 
     // If the ray is outside of the svodag,
     if (!intersected) {
-        return glm::vec4(0.0f);
+        return glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
     }
 
     // Raymarch up to the aabb of the svodag
-    glm::vec3 pos = ray.origin + ray.dir * tmin;
+    glm::vec3 current_pos = ray.origin + ray.dir * tmin;
 
     // loop:
     // If the node is air (alpha is zero), raymarch to the end of current node
     // End loop
 
-    while (pos.x >= 0.0f && pos.y >= 0.0f && pos.z >= 0.0f && pos.x < 1.0f &&
-           pos.y < 1.0f && pos.z < 1.0f) {
+#ifndef NDEBUG
+    int iterations = 0;
+#endif
+
+    do {
         // Get the deepest node that intersects the point
-        QueryResult result = svodag.query(pos); // Without bias as first test
+        QueryResult result =
+            svodag.query(current_pos); // Without bias as first test
 
         if (result.node->get_color().a > 0.0f) {
             // This currently does not support alpha blending
             auto color = result.node->get_color();
             // return glm::vec4(color.r, color.g, color.b, 1.0f);
             return color;
+            // return glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
         }
 
         // Have to find the position of the voxel
+
         float size = level_to_size(result.at_level, level);
-        glm::vec3 voxel_end = snap_pos(pos, level) + glm::vec3(size);
 
-        glm::vec3 tvec = (voxel_end - pos) * dir_inv;
-        float tmax = std::max(tvec.x, std::max(tvec.y, tvec.z));
+        // glm::vec3 biased_pos = current_pos + size*0.1f*ray.dir;
+        glm::vec3 current_voxel_start = snap_pos(current_pos, level);
+        glm::vec3 sign(
+            current_voxel_start.x == current_pos.x ? dir_sign.x : +1,
+            current_voxel_start.y == current_pos.y ? dir_sign.y : +1,
+            current_voxel_start.z == current_pos.z ? dir_sign.z : +1
+        );
 
-        pos += ray.dir * tmax;
+        glm::vec3 current_voxel_end =
+            current_voxel_start + glm::vec3(size) * sign;
 
-        // Find next intersection
-    }
+        auto [tmin, tmax] = slab_test(
+            current_voxel_start, current_voxel_end, current_pos, dir_inv
+        );
 
-    return glm::vec4(0.0f);
+        // current_pos = ray.origin + tmax*ray.dir;
+        current_pos += (tmax)*ray.dir;
+
+#ifndef NDEBUG
+        iterations++;
+
+        if (iterations > 10000) {
+            SPDLOG_INFO("Iter count exceeded 1000, {}", invocation_id);
+            // return glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+        }
+#endif
+    } while (current_pos.x > 0.0f && current_pos.y > 0.0f &&
+             current_pos.z > 0.0f && current_pos.x < 1.0f &&
+             current_pos.y < 1.0f && current_pos.z < 1.0f);
+
+    return glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 int main(int argc, char** argv) {
@@ -109,12 +147,12 @@ int main(int argc, char** argv) {
     SPDLOG_INFO("Constructing SvoDag");
     SvoDag svodag{8}; // width = 256;
 
-    for (size_t x = 0; x < 256; x++) {
-        for (size_t y = 0; y < 256; y++) {
-            for (size_t z = 0; z < 256; z++) {
-                size_t length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
-                                (z - 128) * (z - 128);
-                if (16000 < length && length <= 16385) {
+    for (long x = 0; x < 256; x++) {
+        for (long y = 0; y < 256; y++) {
+            for (long z = 0; z < 256; z++) {
+                long length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
+                              (z - 128) * (z - 128);
+                if (10000 < length && length <= 16384) {
                     svodag.insert(
                         x, y, z,
                         glm::vec4(
@@ -128,38 +166,29 @@ int main(int argc, char** argv) {
     }
     SPDLOG_INFO("Constructed SvoDag");
 
-    auto result = raymarch(
-        svodag, {glm::vec3(-1.0f, 0.5f, 0.5f),
-                 glm::normalize(
-                     glm::vec3(0.998553097f, -0.0199710727f, -0.0499276668f)
-                 )}
-    );
-
-    SPDLOG_INFO(std::format("{}", result));
-
     SPDLOG_INFO("Raymarching...");
-    const int width = 100;
-    const int height = 100;
+    const int img_width = 1920;
+    const int img_height = 1080;
 
-    const float film_width = 1.0f;
-    const float film_height = 1.0f;
+    const float film_width = 1.92f;
+    const float film_height = 1.08f;
     const float film_offset = 1.0f; // Corresponds to FOV
 
     std::vector<std::array<std::byte, 4>> data{};
-    data.reserve(width * height);
+    data.reserve(img_width * img_height);
 
     // stb wants first raw, then second row...
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
+    for (int i = 0; i < img_height; i++) {
+        for (int j = 0; j < img_width; j++) {
             // SPDLOG_INFO("x: {} y: {}", j, i);
 
             glm::vec3 origin = glm::vec3(-film_offset, 0.5f, 0.5f);
             glm::vec3 dir = glm::normalize(
                 glm::vec3(
                     film_offset,
-                    j / static_cast<float>(width) * film_width -
+                    j / static_cast<float>(img_width) * film_width -
                         film_width / 2.0f,
-                    i / static_cast<float>(height) * film_height -
+                    i / static_cast<float>(img_height) * film_height -
                         film_height / 2.0f
                 )
             );
@@ -167,12 +196,20 @@ int main(int argc, char** argv) {
             // SPDLOG_INFO(std::format("{} {}", origin, dir));
 
             data.push_back(float_to_255(raymarch(svodag, {origin, dir})));
+            // data.push_back(float_to_255(raymarch(
+            //     svodag, {{0.0f, j / static_cast<float>(img_width) * film_width,
+            //               i / static_cast<float>(img_height) * film_height},
+            //              {1.0f, 0.0f, 0.0f}}
+            // )));
         }
+        // SPDLOG_INFO("{}", i);
     }
 
     SPDLOG_INFO("Done!");
 
-    stbi_write_png("asdf.png", width, height, 4, data.data(), width * 4);
+    stbi_write_png(
+        "asdf.png", img_width, img_height, 4, data.data(), img_width * 4
+    );
 
     // SPDLOG_INFO(std::format("{}", raymarch(svodag, {glm::vec3(-1.0f, 0.5f,
     // 0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}).value()));
