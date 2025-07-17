@@ -141,7 +141,7 @@ raymarch(const SvoDag& svodag, const Ray ray) {
              current_pos.z > 0.0f && current_pos.x < 1.0f &&
              current_pos.y < 1.0f && current_pos.z < 1.0f);
 
-    return glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    return glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 int main(int argc, char** argv) {
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
 
     SPDLOG_INFO("Constructing SvoDag");
 
-    size_t depth = 3;
+    size_t depth = 8;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1<<depth;
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
             for (long z = 0; z < limit; z++) {
                 long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
                               (z - (limit>>1)) * (z - (limit>>1));
-                if (0 < length && length <= (limit>>1)*(limit>>1))
+                if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
                 // if (x == 1) 
                 {
                     svodag.insert(
