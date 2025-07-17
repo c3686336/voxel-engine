@@ -1,5 +1,5 @@
 #version 450 core
-#define MLEVEL 8
+#define MLEVEL 3
 
 layout(location = 0) in vec2 frag_pos;
 
@@ -9,7 +9,7 @@ struct Node {
 };
 
 struct QueryResult {
-    uint at_level;
+    uint at_level; // 0: At deepest level, MLEVEL: at root, because the level is in the unit of branches
     vec4 color;
 };
 
@@ -39,12 +39,56 @@ vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     return vec2(tmin, tmax);
 }
 
-vec3 snap_pos(vec3 pos, uint level) {
-    return floor(pos * (1 << level)) * pow(0.5, float(level));
+vec4 slab_test_min(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
+    vec3 t1 = (cor1 - pos) * dir_inv;
+    vec3 t2 = (cor2 - pos) * dir_inv;
+
+    float tmin = min(t1.x, t2.x);
+    float tmax = max(t1.x, t2.x);
+
+    vec3 which = vec3(1.0, 0.0, 0.0); // Which axis was limiting
+
+    float temp1 = min(min(t1.y, t2.y), tmax);
+    tmin = max(tmin, temp1);
+    which = (tmin > temp1) ? which : vec3(0.0, 1.0, 0.0);
+    tmax = min(tmax, max(max(t1.y, t2.y), tmin));
+
+    temp1 = min(min(t1.z, t2.z), tmax);
+    tmin = max(tmin, temp1);
+    which = (tmin > temp1) ? which : vec3(0.0, 0.0, 1.0);
+    tmax = min(tmax, max(max(t1.z, t2.z), tmin));
+
+    return vec4(tmin, which);
+}
+
+vec4 slab_test_max(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
+    vec3 t1 = (cor1 - pos) * dir_inv;
+    vec3 t2 = (cor2 - pos) * dir_inv;
+
+    float tmin = min(t1.x, t2.x);
+    float tmax = max(t1.x, t2.x);
+
+    vec3 which = vec3(1.0, 0.0, 0.0); // Which axis was limiting
+
+    tmin = max(tmin, min(min(t1.y, t2.y), tmax));
+    float temp1 = max(max(t1.y, t2.y), tmin);
+    tmax = min(tmax, temp1);
+    which = (tmin < temp1) ? which : vec3(0.0, 1.0, 0.0);
+
+    tmin = max(tmin, min(min(t1.z, t2.z), tmax));
+    temp1 = max(max(t1.z, t2.z), tmin);
+    tmax = min(tmax, temp1);
+    which = (tmin < temp1) ? which : vec3(0.0, 0.0, 1.0);
+
+    return vec4(tmin, which);
+}
+
+vec3 snap_pos(vec3 pos, uint level, uint max_level) {
+    return floor(pos * float(1 << (max_level - level))) * pow(0.5, float(max_level - level));
 }
 
 uvec3 pos_to_bitmask(vec3 pos, uint max_level) {
-    return uvec3(pos * (1 << max_level)); // IDK?
+    return uvec3(pos * float(1 << max_level)); // IDK?
 }
 
 float level_to_size(uint level, uint max_level) {
@@ -52,7 +96,7 @@ float level_to_size(uint level, uint max_level) {
 }
 
 uint bitmask_to_index(uvec3 bitmask, uint level) {
-    uvec3 temp = ((bitmask >> (level - 1)) & 1) << uvec3(2, 1, 0);
+    uvec3 temp = ((bitmask >> (level - 1)) & 1) << uvec3(2, 1, 0); // There is minus one because it does not make sence to find children node at level 0
     return temp.x + temp.y + temp.z;
 }
 
@@ -60,9 +104,9 @@ QueryResult query(vec3 pos, uint max_level) {
     uvec3 bitmask = pos_to_bitmask(pos, max_level);
 
     uint n_idx = 1;
-    for (uint i = max_level; i > 0; i--) {
+    for (uint i = max_level; i >= 0; i--) {
         uint index = bitmask_to_index(bitmask, i);
-        uint new_idx = nodes[n_idx].addr[n_idx];
+        uint new_idx = nodes[n_idx].addr[index];
 
         if (new_idx == 0) {
             return QueryResult(i, nodes[n_idx].color);
@@ -95,10 +139,13 @@ vec4 raymarch(vec3 origin, vec3 dir) {
 
     vec3 cur_pos = origin + dir * minmax.x;
     uint iters = 0;
-    
+
+    vec3 which_axis_hit = slab_test_min(vec3(0.0), vec3(1.0), origin, dir_inv).yzw;
+
     do {
         vec3 biased = cur_pos + dir * level_to_size(0, MLEVEL) * 0.01;
-        // cur_pos += 
+        // vec3 biased = cur_pos;
+        cur_pos = biased;
         QueryResult result = query(biased, MLEVEL);
 
         if (result.color.a > 0.0) {
@@ -106,33 +153,41 @@ vec4 raymarch(vec3 origin, vec3 dir) {
             return vec4(0.0, 1.0, 0.0, 1.0);
         }
 
+        // return vec4(vec3(level_to_size(result.at_level, MLEVEL)), 1.0);
+
         float size = level_to_size(result.at_level, MLEVEL);
 
         vec3 cur_vox_start = snap_pos(
                 biased,
+                result.at_level,
                 MLEVEL
             );
 
-        vec3 sgn = mix(vec3(1.0), dir_sign, equal(cur_vox_start, cur_pos));
+        // vec3 sgn = mix(vec3(1.0), dir_sign, equal(cur_vox_start, cur_pos));
+        // vec3 sgn = vec3(1.0);
+        vec3 sgn = min(vec3(1.0), (which_axis_hit * dir_sign));
+        // return vec4(which_axis_hit, 1.0);
 
         vec3 cur_vox_end = cur_vox_start + sgn * size;
 
-        vec2 new_minmax = slab_test(
+        vec4 new_minmax = slab_test_max(
                 cur_vox_start,
                 cur_vox_end,
                 biased,
                 dir_inv
             );
 
-        cur_pos = biased + new_minmax.y * dir;
+        cur_pos = new_minmax.x * dir;
+        which_axis_hit = new_minmax.yzw;
 
         iters++;
     }
     while (all(lessThan(cur_pos, vec3(1.0))) && all(lessThan(vec3(0.0), cur_pos)) && iters < 100);
 
     if (iters >= 100) {
-        return vec4(1.0, 1.0, 0.0, 1.0);
+        return vec4(cur_pos, 1.0);
     }
+    // return vec4(cur_pos, 1.0);
     return vec4(0.0, 0.0, 1.0, 1.0);
 }
 
