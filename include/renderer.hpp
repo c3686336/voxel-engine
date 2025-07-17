@@ -33,6 +33,7 @@ private:
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
+    gl::GLuint ssbo;
 	gl::GLuint program;
 };
 

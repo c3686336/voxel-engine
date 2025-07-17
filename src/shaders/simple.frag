@@ -2,6 +2,10 @@
 
 layout (location = 0) in vec3 color;
 
+layout(std430, binding = 3) buffer asdf {
+    int data[];
+};
+
 out vec4 fragcolor;
 
 void main() {
