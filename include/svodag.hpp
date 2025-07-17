@@ -26,11 +26,11 @@ typedef uint32_t Addr_t; // Have to fix the paddings before changing this type
 // vec2: no padding, alignment = size
 // vec3, vec4: pad to match the size of vec4, alignment = size + padding
 //
-typedef struct {
-    glm::vec4 color; // 16 bytes
+typedef struct alignas(16) {
+    alignas(16) glm::vec4 color; // 16 bytes
     // Read as single vec4, overall size 16B
 
-    std::array<Addr_t, 8> addr; // 32B (for now)
+    alignas(4) std::array<Addr_t, 8> addr; // 4 Bytes * 8 = 32 Bytes (for now)
     // One is read as a single uint, overall size 4B;
 
     // Total size = 48B, needs to be padded to 48B = 16B * 3
