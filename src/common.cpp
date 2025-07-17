@@ -18,7 +18,7 @@ std::string load_file(const std::filesystem::path& path) {
 	std::ostringstream contents;
 	contents << file.rdbuf();
 
-	SPDLOG_INFO("File loaded. Content: {}", contents.str());
+	// SPDLOG_INFO("File loaded. Content: {}", contents.str());
 
 	return contents.str();
 }
