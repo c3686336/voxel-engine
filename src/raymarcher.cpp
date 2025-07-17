@@ -93,9 +93,9 @@ raymarch(const SvoDag& svodag, const Ray ray) {
     do {
         // Get the deepest node that intersects the point
         glm::vec3 bias = ray.dir * level_to_size(0, 8) * 0.01f;
-        current_pos += bias;
+        // current_pos += bias;
         QueryResult result =
-            svodag.query(current_pos); // Without bias as first test
+            svodag.query(current_pos + bias); // Without bias as first test
 
         if (result.node->get_color().a > 0.0f) {
             // This currently does not support alpha blending
@@ -112,10 +112,14 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         // glm::vec3 biased_pos = current_pos + size*0.1f*ray.dir;
         glm::vec3 current_voxel_start = snap_pos(current_pos + bias, level);
         glm::vec3 sign(
-            current_voxel_start.x == current_pos.x ? dir_sign.x : +1,
-            current_voxel_start.y == current_pos.y ? dir_sign.y : +1,
-            current_voxel_start.z == current_pos.z ? dir_sign.z : +1
+            current_voxel_start.x == current_pos.x ? dir_sign.x : +1.f,
+            current_voxel_start.y == current_pos.y ? dir_sign.y : +1.f,
+            current_voxel_start.z == current_pos.z ? dir_sign.z : +1.f
         );
+
+        // SPDLOG_INFO(std::format("{}", sign));
+
+        // sign = glm::vec3(1.f, 1.f, 1.f);
 
         // assert(current_voxel_start.x == current_pos.x || current_voxel_start.y == current_pos.y || current_voxel_start.z == current_pos.z);
 
@@ -123,11 +127,11 @@ raymarch(const SvoDag& svodag, const Ray ray) {
             current_voxel_start + glm::vec3(size) * sign;
 
         auto [tmin, tmax] = slab_test(
-            current_voxel_start, current_voxel_end, current_pos, dir_inv
+            current_voxel_start, current_voxel_end, current_pos + bias, dir_inv
         );
 
         // current_pos = ray.origin + tmax*ray.dir;
-        current_pos += (tmax)*ray.dir;
+        current_pos += (tmax)*ray.dir + bias;
 
 #ifndef NDEBUG
         iterations++;
