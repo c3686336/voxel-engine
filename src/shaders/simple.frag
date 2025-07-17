@@ -19,6 +19,8 @@ layout(std430, binding = 3) buffer asdf {
 
 out vec4 frag_color;
 
+vec4 report = vec4(0.2, 0.0, 0.0, 1.0);
+
 vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     vec3 t1 = (cor1 - pos) * dir_inv;
     vec3 t2 = (cor2 - pos) * dir_inv;
@@ -31,6 +33,8 @@ vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
 
     tmin = max(tmin, min(min(t1.z, t2.z), tmax));
     tmax = min(tmax, max(max(t1.z, t2.z), tmin));
+
+    // report = vec4(tmin, tmin, tmin, 1.0);
 
     return vec2(tmin, tmax);
 }
@@ -80,8 +84,8 @@ vec4 raymarch(vec3 origin, vec3 dir) {
     // );
     vec3 dir_sign = mix( /*false*/ vec3(-1.0), vec3(0.0), lessThanEqual(vec3(0.0), dir));
 
-    vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
-    minmax.x = min(0.0, minmax.x);
+    vec2 minmax = slab_test(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), origin, dir_inv);
+    minmax.x = max(0.0, minmax.x);
 
     bool intersected = minmax.y > minmax.x;
 
@@ -90,11 +94,12 @@ vec4 raymarch(vec3 origin, vec3 dir) {
     }
 
     vec3 cur_pos = origin + dir * minmax.x;
-
     uint iters = 0;
+    
     do {
-        cur_pos += dir * level_to_size(0, MLEVEL) * 0.01;
-        QueryResult result = query(cur_pos, MLEVEL);
+        vec3 biased = cur_pos + dir * level_to_size(0, MLEVEL) * 0.01;
+        // cur_pos += 
+        QueryResult result = query(biased, MLEVEL);
 
         if (result.color.a > 0.0) {
             // return result.color;
@@ -104,8 +109,8 @@ vec4 raymarch(vec3 origin, vec3 dir) {
         float size = level_to_size(result.at_level, MLEVEL);
 
         vec3 cur_vox_start = snap_pos(
-                cur_pos,
-                result.at_level
+                biased,
+                MLEVEL
             );
 
         vec3 sgn = mix(vec3(1.0), dir_sign, equal(cur_vox_start, cur_pos));
@@ -115,21 +120,27 @@ vec4 raymarch(vec3 origin, vec3 dir) {
         vec2 new_minmax = slab_test(
                 cur_vox_start,
                 cur_vox_end,
-                cur_pos,
+                biased,
                 dir_inv
             );
 
-        cur_pos += new_minmax.y * dir;
+        cur_pos = biased + new_minmax.y * dir;
 
         iters++;
-    } while (all(lessThan(cur_pos, vec3(1.0))) && all(lessThan(vec3(0.0), cur_pos)) && iters < 100);
+    }
+    while (all(lessThan(cur_pos, vec3(1.0))) && all(lessThan(vec3(0.0), cur_pos)) && iters < 100);
 
-    if (iters == 100) {
+    if (iters >= 100) {
         return vec4(1.0, 1.0, 0.0, 1.0);
     }
     return vec4(0.0, 0.0, 1.0, 1.0);
 }
 
 void main() {
-    frag_color = raymarch(vec3(-1.0, 0.5, 0.5), normalize(vec3(1.0, frag_pos.xy)));
+    // frag_color = raymarch(vec3(-1.0, 0.5, 0.5), normalize(vec3(1.0, frag_pos.xy/2.0)));
+    // frag_color = vec4(frag_pos.xy, 0.0, 1.0);
+    // raymarch(vec3(-1.0, frag_pos.xy), vec3(1.0, 0.0, 0.0));
+    
+    report  = raymarch(vec3(-1.0, 0.5, 0.5), normalize(vec3(1.0, frag_pos.xy/2.0)));
+    frag_color = report;
 }

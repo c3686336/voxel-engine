@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "vertex.hpp"
 #include "svodag.hpp"
+#include "formatter.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -216,7 +217,7 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
     
-    size_t depth = 4;
+    size_t depth = 3;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1<<depth;
@@ -225,8 +226,8 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
             for (long z = 0; z < limit; z++) {
                 long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
                               (z - (limit>>1)) * (z - (limit>>1));
-                if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
-                // if (x == 1) 
+                // if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
+                if (x == 2) 
                 {
                     svodag.insert(
                         x, y, z,
@@ -240,13 +241,22 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
         }
     }
     SPDLOG_INFO("Created SVODAG");
+
+    SPDLOG_INFO("Serializing SVODAG");
+    std::vector<SerializedNode> data = svodag.serialize();
+
+    for (auto& d : data) {
+        SPDLOG_INFO(std::format("{}", d));
+    }
+    SPDLOG_INFO("Serialized SVODAG");
     
     SPDLOG_INFO("Creating SSBO");
-    std::vector<SerializedNode> data = svodag.serialize();
+
+    // SPDLOG_INFO(std::format("{}", data));
 
     glGenBuffers(1, &ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glNamedBufferStorage(ssbo, sizeof(data), data.data(), GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(ssbo, data.size()*sizeof(SerializedNode), data.data(), GL_DYNAMIC_STORAGE_BIT);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
     SPDLOG_INFO("Created SSBO");
 	
