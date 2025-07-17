@@ -20,8 +20,6 @@ layout(std430, binding = 3) buffer asdf {
 
 out vec4 frag_color;
 
-vec4 report = vec4(0.2, 0.1, 0.0, 1.0);
-
 vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     // https://tavianator.com/2015/ray_box_nan.html
     precise vec3 t1 = (cor1 - pos) * dir_inv;
@@ -135,13 +133,5 @@ vec4 raymarch(vec3 origin, vec3 dir) {
 }
 
 void main() {
-    vec4 result;
-    // frag_color = raymarch(vec3(-1.0, 0.5, 0.5), normalize(vec3(1.0, frag_pos.xy/2.0)));
-    // frag_color = vec4(frag_pos.xy, 0.0, 1.0);
-    result = raymarch(vec3(-1.0, frag_pos.xy/2 + 0.5), vec3(1.0, 0.0, 0.0));
-    
-    // result = raymarch(vec3(-1.0, 0.5, 0.5), normalize(vec3(1.0, frag_pos.xy/1.0)));
-    report = result;
-    // report = vec4(frag_pos.xy/2 + 0.5, 0, 1);
-    frag_color = report;
+    frag_color = raymarch(vec3(-1, 0.5, 0.5), vec3(1.0, frag_pos.xy/2));
 }
