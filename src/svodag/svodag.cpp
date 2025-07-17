@@ -219,7 +219,7 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     }
 
     for (auto i = map.begin(); i != map.end(); i++) {
-        SPDLOG_INFO(std::format("{}", i->second));
+        // SPDLOG_INFO(std::format("{}", i->second));
 
         buffer[i->second] =
             SerializedNode{i->first->get_color(), std::array<Addr_t, 8>{0}};
