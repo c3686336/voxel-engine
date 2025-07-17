@@ -2,14 +2,6 @@
 
 layout (location = 0) in vec3 color;
 
-<<<<<<< Updated upstream
-layout(std430, binding = 3) buffer asdf {
-    int data[];
-};
-
-=======
-<<<<<<< Updated upstream
-=======
 struct Node {
     vec4 color;
     uint addr[8];
@@ -19,8 +11,6 @@ layout(std430, binding = 3) buffer asdf {
     Node nodes[];
 };
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 out vec4 fragcolor;
 
 void main() {

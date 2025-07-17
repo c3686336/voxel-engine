@@ -212,14 +212,6 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 	ibo = create_ibo();
 	vao = create_vao();
 	bind_buffers(vao, vbo, ibo);
-<<<<<<< Updated upstream
-
-    // TODO: Separate this out
-    SPDLOG_INFO("Creating SSBO");
-    std::array<int, 1> data = {0};
-=======
-<<<<<<< Updated upstream
-=======
 
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
@@ -252,16 +244,11 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     SPDLOG_INFO("Creating SSBO");
     std::vector<SerializedNode> data = svodag.serialize();
 
->>>>>>> Stashed changes
     glGenBuffers(1, &ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
     glNamedBufferStorage(ssbo, sizeof(data), data.data(), GL_DYNAMIC_STORAGE_BIT);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
     SPDLOG_INFO("Created SSBO");
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 	
 	program = load_shaders(vs_path, fs_path);
 }
