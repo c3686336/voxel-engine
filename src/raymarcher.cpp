@@ -110,7 +110,7 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         float size = level_to_size(result.at_level, level);
 
         // glm::vec3 biased_pos = current_pos + size*0.1f*ray.dir;
-        glm::vec3 current_voxel_start = snap_pos(current_pos + bias, level);
+        glm::vec3 current_voxel_start = snap_pos(current_pos + bias, result.at_level, level);
         glm::vec3 sign(
             current_voxel_start.x == current_pos.x ? dir_sign.x : +1.f,
             current_voxel_start.y == current_pos.y ? dir_sign.y : +1.f,
@@ -123,8 +123,8 @@ raymarch(const SvoDag& svodag, const Ray ray) {
 
         // assert(current_voxel_start.x == current_pos.x || current_voxel_start.y == current_pos.y || current_voxel_start.z == current_pos.z);
 
-        glm::vec3 current_voxel_end =
-            current_voxel_start + glm::vec3(size) * sign;
+        glm::vec3 current_voxel_end = snap_pos_up(current_pos + bias, result.at_level, level);
+        //    current_voxel_start + glm::vec3(size) * sign;
 
         auto [tmin, tmax] = slab_test(
             current_voxel_start, current_voxel_end, current_pos + bias, dir_inv
