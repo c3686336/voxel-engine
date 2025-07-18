@@ -42,8 +42,10 @@ private:
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
+
     Ssbo<SerializedNode> svodag_ssbo;
     Ssbo<SvodagMetaData> metadata_ssbo;
+
 	gl::GLuint program;
 };
 
