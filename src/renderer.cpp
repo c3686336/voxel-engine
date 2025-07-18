@@ -217,7 +217,7 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
     
-    size_t depth = 3;
+    size_t depth = 8;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1<<depth;
@@ -245,9 +245,6 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     SPDLOG_INFO("Serializing SVODAG");
     std::vector<SerializedNode> data = svodag.serialize();
 
-    for (auto& d : data) {
-        SPDLOG_INFO(std::format("{}", d));
-    }
     SPDLOG_INFO("Serialized SVODAG");
     
     SPDLOG_INFO("Creating SSBO");
