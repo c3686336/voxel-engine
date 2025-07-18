@@ -1,8 +1,16 @@
 #version 450 core
-#define MLEVEL 8
 #define INF 1.0/0.0
+#define PI 3.1415926538
 
 layout(location = 0) in vec2 frag_pos;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_up;
+layout(location = 6) uniform vec3 camera_right;
+
+layout(location = 3) uniform float fov;
+layout(location = 4) uniform float aspect;
 
 struct Node {
     vec4 color;
@@ -41,7 +49,6 @@ vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     // Eliminates NaN problem
     tmin = max(tmin, min(min(t1.y, t2.y), tmax));
     tmax = min(tmax, max(max(t1.y, t2.y), tmin));
-
 
     tmin = max(tmin, min(min(t1.z, t2.z), tmax));
     tmax = min(tmax, max(max(t1.z, t2.z), tmin));
@@ -103,7 +110,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     vec3 cur_pos = origin + dir * minmax.x;
     uint iters = 0;
 
-    vec3 bias = level_to_size(0, MLEVEL)*0.01 * dir;
+    vec3 bias = level_to_size(0, level) * 0.01 * dir;
 
     do {
         vec3 biased = cur_pos + bias;
@@ -116,18 +123,18 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         float size = level_to_size(result.at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
-            biased,
-            result.at_level,
-            level
+                biased,
+                result.at_level,
+                level
             );
 
         vec3 cur_vox_end = cur_vox_start + vec3(size);
 
         minmax = slab_test(
-            cur_vox_start,
-            cur_vox_end,
-            biased,
-            dir_inv
+                cur_vox_start,
+                cur_vox_end,
+                biased,
+                dir_inv
             );
 
         cur_pos = biased + minmax.y * dir;
@@ -144,5 +151,12 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
 }
 
 void main() {
-    frag_color = raymarch(0, vec3(-1, 0.5, 0.5), vec3(1.0, frag_pos.xy/2));
+    frag_color = raymarch(
+            0,
+            (metadata[0].model_inv * vec4(camera_pos, 1.0)).xyz,
+            normalize((metadata[0].model_inv * vec4(
+                           camera_dir + (frag_pos.y*camera_up + frag_pos.x*camera_right) * 0.5 * tan(fov/2.0),
+                    0.0
+                )).xyz)
+        );
 }

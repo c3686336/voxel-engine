@@ -18,6 +18,10 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <filesystem>
 #include <format>
 #include <string>
@@ -210,7 +214,7 @@ GLuint load_shaders(
     return program;
 }
 
-Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera_pos(glm::vec3(-1.f, 0.f, 0.f)), camera_dir(glm::vec3(1.f, 0.f, 0.f)), fov(90.f), has_value(true), aspect(1.0) {
+Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera_pos(glm::vec3(-1.f, .5f, .5f)), camera_dir(glm::vec3(1.f, 0.f, 0.f)), camera_up(glm::vec3(0.f, 1.f, 0.f)), fov(std::numbers::pi/2.f), aspect(1.0), has_value(true) {
 	window = create_window(640, 480);
 	initialize_gl(640, 480);
 
@@ -343,6 +347,18 @@ bool Renderer::main_loop(const std::function<void()> f) {
     glBindVertexArray(vao);
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
+
+    glm::vec3 camera_right = glm::cross(camera_dir, camera_up);
+
+    SPDLOG_INFO(std::format("{}", camera_right));
+
+    glUniform3fv(1, 1, glm::value_ptr(camera_pos));
+    glUniform3fv(2, 1, glm::value_ptr(camera_dir));
+    glUniform3fv(5, 1, glm::value_ptr(camera_up));
+    glUniform3fv(6, 1, glm::value_ptr(camera_right));
+    glUniform1f(3, fov);
+    glUniform1f(4, aspect);
+    
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
     ImGui::Render();
