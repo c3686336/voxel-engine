@@ -34,6 +34,7 @@ public:
 	Renderer& operator=(const Renderer&& other) noexcept;
 
 	bool main_loop(const std::function<void ()> f);
+    GLFWwindow* get_window() const;
 
 	virtual ~Renderer();
 private:

@@ -14,7 +14,12 @@
 
 #include <spdlog/spdlog.h>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <filesystem>
+
 #include <format>
 #include <string>
 
@@ -262,7 +267,15 @@ Renderer::Renderer(
     };
     metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
 
-    program = load_shaders(vs_path, fs_path);
+	program = load_shaders(vs_path, fs_path);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init();
 }
 
 Renderer::Renderer(const Renderer&& other) noexcept {
@@ -284,9 +297,15 @@ Renderer& Renderer::operator=(const Renderer&& other) noexcept {
 }
 
 Renderer::~Renderer() {
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteProgram(program);
+    SPDLOG_INFO("Destroying Renderer");
+    
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+	glDeleteProgram(program);
 
     glfwTerminate();
 }
@@ -295,16 +314,28 @@ bool Renderer::main_loop(const std::function<void()> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+	f();
+
     glUseProgram(program);
-    glBindVertexArray(vao);
+	glBindVertexArray(vao);
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
-    glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+	glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);
-    glfwPollEvents();
+	
+	return glfwWindowShouldClose(window);
+}
 
-    f();
 
-    return glfwWindowShouldClose(window);
+GLFWwindow* Renderer::get_window() const {
+    return window;
 }
