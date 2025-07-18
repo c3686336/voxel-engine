@@ -4,6 +4,7 @@
 #include "vertex.hpp"
 #include "svodag.hpp"
 #include "formatter.hpp"
+#include "ssbo.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -251,12 +252,8 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 
     // SPDLOG_INFO(std::format("{}", data));
 
-    glGenBuffers(1, &ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glNamedBufferStorage(ssbo, data.size()*sizeof(SerializedNode), data.data(), GL_DYNAMIC_STORAGE_BIT);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
-    SPDLOG_INFO("Created SSBO");
-	
+    ssbo = Ssbo<SerializedNode>(data);
+    
 	program = load_shaders(vs_path, fs_path);
 }
 
@@ -292,7 +289,7 @@ bool Renderer::main_loop(const std::function<void ()> f) {
 
 	glUseProgram(program);
 	glBindVertexArray(vao);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
+    ssbo.bind(3);
 	glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
 	glfwSwapBuffers(window);

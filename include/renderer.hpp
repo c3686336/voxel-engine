@@ -3,6 +3,8 @@
 
 #include "common.hpp"
 #include "vertex.hpp"
+#include "ssbo.hpp"
+#include "svodag.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -33,7 +35,7 @@ private:
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
-    gl::GLuint ssbo;
+    Ssbo<SerializedNode> ssbo;
 	gl::GLuint program;
 };
 
