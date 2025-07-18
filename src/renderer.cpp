@@ -260,11 +260,6 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 
 	program = load_shaders(vs_path, fs_path);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
@@ -275,27 +270,50 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
 
     program = load_shaders(vs_path, fs_path);
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 }
 
-Renderer::Renderer(const Renderer&& other) noexcept {
-    window = other.window;
-    vbo = other.vbo;
-    ibo = other.vbo;
-    vao = other.vao;
-    program = other.program;
+Renderer::Renderer(Renderer&& other) noexcept {
+	window = other.window;
+	vbo = other.vbo;
+	ibo = other.vbo;
+	vao = other.vao;
+	program = other.program;
+    metadata_ssbo = std::move(other.metadata_ssbo);
+    svodag_ssbo = std::move(other.svodag_ssbo);
+
+    camera_pos = other.camera_pos;
+    camera_dir = other.camera_dir;
+
+    has_value = other.has_value;
+    other.has_value = false;
 }
 
-Renderer& Renderer::operator=(const Renderer&& other) noexcept {
-    window = other.window;
-    vbo = other.vbo;
-    ibo = other.vbo;
-    vao = other.vao;
-    program = other.program;
+Renderer& Renderer::operator=(Renderer&& other) noexcept {
+    using std::swap;
+
+    swap(window, other.window);
+    swap(vbo, other.vbo);
+    swap(ibo, other.ibo);
+    swap(vao, other.vao);
+    swap(program, other.program);
+    swap(svodag_ssbo, other.svodag_ssbo);
+    swap(metadata_ssbo, other.metadata_ssbo);
+
+    swap(camera_pos, other.camera_pos);
+    swap(camera_dir, other.camera_dir);
+
+    swap(has_value, other.has_value);
 
     return *this;
 }
 
 Renderer::~Renderer() {
+    if (!has_value) return;
+
     SPDLOG_INFO("Destroying Renderer");
     
     ImGui_ImplOpenGL3_Shutdown();
@@ -313,7 +331,7 @@ bool Renderer::main_loop(const std::function<void()> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-	glfwPollEvents();
+    glfwPollEvents();
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -322,10 +340,10 @@ bool Renderer::main_loop(const std::function<void()> f) {
 	f();
 
     glUseProgram(program);
-	glBindVertexArray(vao);
+    glBindVertexArray(vao);
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
-	glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
