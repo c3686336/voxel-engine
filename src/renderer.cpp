@@ -216,8 +216,8 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
-    
-    size_t depth = 8;
+
+    size_t depth = 3;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1<<depth;
