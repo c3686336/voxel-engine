@@ -260,9 +260,6 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 
 	program = load_shaders(vs_path, fs_path);
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init();
-
     svodag_ssbo = Ssbo<SerializedNode>(data);
     std::vector<SvodagMetaData> metadata = {
         {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), (unsigned int)1}
@@ -274,6 +271,9 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init();
 }
 
 Renderer::Renderer(Renderer&& other) noexcept {
