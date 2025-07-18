@@ -11,7 +11,7 @@ struct Node {
 
 struct SvodagMetaData {
     mat4 model_inv;
-    uint max_depth;
+    uint max_level;
     uint at_index;
 };
 
@@ -66,10 +66,10 @@ uint bitmask_to_index(uvec3 bitmask, uint level) {
     return temp.x + temp.y + temp.z;
 }
 
-QueryResult query(vec3 pos, uint max_level) {
+QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
     uvec3 bitmask = pos_to_bitmask(pos, max_level);
 
-    uint n_idx = 1;
+    uint n_idx = svodag_index;
     for (uint i = max_level; i >= 0; i--) {
         uint index = bitmask_to_index(bitmask, i);
         uint new_idx = nodes[n_idx].addr[index];
@@ -86,8 +86,9 @@ QueryResult query(vec3 pos, uint max_level) {
     return QueryResult(0, nodes[n_idx].color);
 }
 
-vec4 raymarch(vec3 origin, vec3 dir) {
-    uint level = MLEVEL; // Need to set this through uniform or ssbo content
+vec4 raymarch(uint index, vec3 origin, vec3 dir) {
+    uint level = metadata[index].max_level; // Need to set this through uniform or ssbo content
+    uint svodag_index = metadata[index].at_index;
     vec3 dir_inv = vec3(1.0) / dir;
 
     vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
@@ -106,7 +107,7 @@ vec4 raymarch(vec3 origin, vec3 dir) {
 
     do {
         vec3 biased = cur_pos + bias;
-        QueryResult result = query(biased, level);
+        QueryResult result = query(svodag_index, biased, level);
 
         if (result.color.a > 0.0) {
             return result.color;
@@ -143,5 +144,5 @@ vec4 raymarch(vec3 origin, vec3 dir) {
 }
 
 void main() {
-    frag_color = raymarch(vec3(-1, 0.5, 0.5), vec3(1.0, frag_pos.xy/2));
+    frag_color = raymarch(0, vec3(-1, 0.5, 0.5), vec3(1.0, frag_pos.xy/2));
 }

@@ -272,7 +272,7 @@ Renderer::Renderer(
 
     svodag_ssbo = Ssbo<SerializedNode>(data);
     std::vector<SvodagMetaData> metadata = {
-        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), 0}
+        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), (unsigned int)1}
     };
     metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
 
