@@ -124,11 +124,19 @@ inline float level_to_size(const size_t level, const size_t max_level) {
     return powf(0.5f, (float)(max_level - level));
 }
 
-inline const glm::vec3 snap_pos(const glm::vec3 pos, size_t level) {
+inline const glm::vec3 snap_pos(const glm::vec3 pos, size_t level, size_t max_level) {
     return glm::vec3(
-        floorf(pos.x * (1 << level)) * powf(0.5f, (float)level),
-        floorf(pos.y * (1 << level)) * powf(0.5f, (float)level),
-        floorf(pos.z * (1 << level)) * powf(0.5f, (float)level)
+        floorf(pos.x * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
+        floorf(pos.y * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
+        floorf(pos.z * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level))
+    );
+}
+
+inline const glm::vec3 snap_pos_up(const glm::vec3 pos, size_t level, size_t max_level) {
+    return glm::vec3(
+        ceilf(pos.x * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
+        ceilf(pos.y * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
+        ceilf(pos.z * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level))
     );
 }
 
