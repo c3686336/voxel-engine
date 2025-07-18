@@ -52,7 +52,7 @@ float level_to_size(uint level, uint max_level) {
 }
 
 uint bitmask_to_index(uvec3 bitmask, uint level) {
-    uvec3 temp = ((bitmask >> (level - 1)) & 1) << uvec3(2, 1, 0); // There is minus one because it does not make sence to find children node at level 0
+    uvec3 temp = (uvec3(bitmask >> (level - 1)) & uint(1)) << uvec3(2, 1, 0); // There is minus one because it does not make sence to find children node at level 0
     return temp.x + temp.y + temp.z;
 }
 
