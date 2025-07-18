@@ -210,11 +210,9 @@ GLuint load_shaders(
     return program;
 }
 
-Renderer::Renderer(
-    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
-) {
-    window = create_window(640, 480);
-    initialize_gl(640, 480);
+Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera_pos(glm::vec3(-1.f, 0.f, 0.f)), camera_dir(glm::vec3(1.f, 0.f, 0.f)), fov(90.f), has_value(true), aspect(1.0) {
+	window = create_window(640, 480);
+	initialize_gl(640, 480);
 
     vbo = create_vbo();
     ibo = create_ibo();
