@@ -2,6 +2,8 @@
 
 #include "common.hpp"
 #include "vertex.hpp"
+#include "svodag.hpp"
+#include "formatter.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -211,6 +213,52 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 	ibo = create_ibo();
 	vao = create_vao();
 	bind_buffers(vao, vbo, ibo);
+
+    // TODO: Separate this out
+    SPDLOG_INFO("Creating SVODAG");
+    
+    size_t depth = 3;
+    SvoDag svodag{depth}; // width = 256;
+
+    long limit = 1<<depth;
+    for (long x = 0; x < limit; x++) {
+        for (long y = 0; y < limit; y++) {
+            for (long z = 0; z < limit; z++) {
+                long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
+                              (z - (limit>>1)) * (z - (limit>>1));
+                if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
+                // if (x == 2) 
+                {
+                    svodag.insert(
+                        x, y, z,
+                        glm::vec4(
+                            (float)x / (float)limit, (float)y / (float)limit,
+                            (float)z / (float)limit, 1.0f
+                        )
+                    );
+                }
+            }
+        }
+    }
+    SPDLOG_INFO("Created SVODAG");
+
+    SPDLOG_INFO("Serializing SVODAG");
+    std::vector<SerializedNode> data = svodag.serialize();
+
+    for (auto& d : data) {
+        SPDLOG_INFO(std::format("{}", d));
+    }
+    SPDLOG_INFO("Serialized SVODAG");
+    
+    SPDLOG_INFO("Creating SSBO");
+
+    // SPDLOG_INFO(std::format("{}", data));
+
+    glGenBuffers(1, &ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glNamedBufferStorage(ssbo, data.size()*sizeof(SerializedNode), data.data(), GL_DYNAMIC_STORAGE_BIT);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
+    SPDLOG_INFO("Created SSBO");
 	
 	program = load_shaders(vs_path, fs_path);
 }
@@ -247,6 +295,7 @@ bool Renderer::main_loop(const std::function<void ()> f) {
 
 	glUseProgram(program);
 	glBindVertexArray(vao);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
 	glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
 	glfwSwapBuffers(window);
