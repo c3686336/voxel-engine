@@ -19,6 +19,12 @@
 #include <filesystem>
 #include <functional>
 
+typedef struct alignas(16) {
+    alignas(16) glm::mat4 model_inv;
+    alignas(4) unsigned int max_level;
+    alignas(4) unsigned int at_index;
+} SvodagMetaData;
+
 class Renderer {
 public:
 	Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path);
@@ -35,7 +41,8 @@ private:
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
-    Ssbo<SerializedNode> ssbo;
+    Ssbo<SerializedNode> svodag_ssbo;
+    Ssbo<SvodagMetaData> metadata_ssbo;
 	gl::GLuint program;
 };
 

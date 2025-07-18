@@ -9,13 +9,23 @@ struct Node {
     uint addr[8];
 };
 
+struct SvodagMetaData {
+    mat4 model_inv;
+    uint max_depth;
+    uint at_index;
+};
+
 struct QueryResult {
     uint at_level; // 0: At deepest level, MLEVEL: at root, because the level is in the unit of branches
     vec4 color;
 };
 
-layout(std430, binding = 3) buffer asdf {
+layout(std430, binding = 3) buffer one {
     Node nodes[];
+};
+
+layout(std430, binding = 2) buffer two {
+    SvodagMetaData metadata[];
 };
 
 out vec4 frag_color;

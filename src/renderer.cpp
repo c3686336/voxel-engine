@@ -1,10 +1,10 @@
 #include "renderer.hpp"
 
 #include "common.hpp"
-#include "vertex.hpp"
-#include "svodag.hpp"
 #include "formatter.hpp"
 #include "ssbo.hpp"
+#include "svodag.hpp"
+#include "vertex.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -14,26 +14,27 @@
 
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <format>
 #include <string>
-#include <filesystem>
 
 using namespace gl;
 
-void framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
+void framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
     gl::glViewport(0, 0, width, height);
 }
 
-void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                      GLsizei length, GLchar const *message,
-                      void const *user_param) {
+void message_callback(
+    GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+    GLchar const* message, void const* user_param
+) {
     // Adapted from
     // https://github.com/fendevel/Guide-to-Modern-OpenGL-Functions?tab=readme-ov-file#detailed-messages-with-debug-output
 
     auto const src_str = [source]() {
         switch (source) {
-		case GL_DEBUG_SOURCE_API:
-			return "API";
+        case GL_DEBUG_SOURCE_API:
+            return "API";
         case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
             return "WINDOW SYSTEM";
         case GL_DEBUG_SOURCE_SHADER_COMPILER:
@@ -70,14 +71,15 @@ void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
         }
     }();
 
-    std::string messge = std::format("From {} : {}, {}", src_str, type_str,
-                                     static_cast<int>(id));
+    std::string messge = std::format(
+        "From {} : {}, {}", src_str, type_str, static_cast<int>(id)
+    );
 
     switch (severity) {
     case GL_DEBUG_SEVERITY_NOTIFICATION:
         SPDLOG_INFO(message);
         break;
-	case GL_DEBUG_SEVERITY_LOW:
+    case GL_DEBUG_SEVERITY_LOW:
         SPDLOG_WARN(message);
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
@@ -85,135 +87,135 @@ void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
         break;
     case GL_DEBUG_SEVERITY_HIGH:
         SPDLOG_CRITICAL(message);
-		exit(1);
+        exit(1);
         break;
     default:
         SPDLOG_CRITICAL("Non-standard severity marker");
-		exit(1);
+        exit(1);
     }
 }
 
 GLFWwindow* create_window(int width, int height) {
-	glfwInit();
+    glfwInit();
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* window = glfwCreateWindow(width, height,
-		"voxel engine", NULL, NULL);
+    GLFWwindow* window =
+        glfwCreateWindow(width, height, "voxel engine", NULL, NULL);
 
-	if (window == nullptr) {
-		SPDLOG_CRITICAL("Could not create the window");
-		exit(1);
-	}
+    if (window == nullptr) {
+        SPDLOG_CRITICAL("Could not create the window");
+        exit(1);
+    }
 
-	glfwMakeContextCurrent(window);
-	glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
 
-	glfwShowWindow(window);
+    glfwShowWindow(window);
 
-	SPDLOG_INFO("Created the window");
+    SPDLOG_INFO("Created the window");
 
-	return window;
+    return window;
 }
 
 void initialize_gl(int width, int height) {
-	glbinding::initialize(glfwGetProcAddress);
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(message_callback, nullptr);
-	glViewport(0, 0, width, height);
-	SPDLOG_INFO("Initialized OpenGL");
+    glbinding::initialize(glfwGetProcAddress);
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(message_callback, nullptr);
+    glViewport(0, 0, width, height);
+    SPDLOG_INFO("Initialized OpenGL");
 }
 
 GLuint create_vbo() {
-	GLuint vbo;
+    GLuint vbo;
     glCreateBuffers(1, &vbo);
-    glNamedBufferStorage(vbo, sizeof(Vertex)*3, fullscreen_quad, GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(
+        vbo, sizeof(Vertex) * 3, fullscreen_quad, GL_DYNAMIC_STORAGE_BIT
+    );
     SPDLOG_INFO("Created VBO");
 
-	return vbo;
+    return vbo;
 }
 
 GLuint create_ibo() {
-	GLuint ibo;
-	glCreateBuffers(1, &ibo);
-	glNamedBufferStorage(ibo, sizeof(uint32_t)*3, fullscreen_indices, GL_DYNAMIC_STORAGE_BIT);
-	SPDLOG_INFO("Created IBO");
+    GLuint ibo;
+    glCreateBuffers(1, &ibo);
+    glNamedBufferStorage(
+        ibo, sizeof(uint32_t) * 3, fullscreen_indices, GL_DYNAMIC_STORAGE_BIT
+    );
+    SPDLOG_INFO("Created IBO");
 
-	return ibo;
+    return ibo;
 }
 
 GLuint create_vao() {
-	GLuint vao;
+    GLuint vao;
     glCreateVertexArrays(1, &vao);
-    
+
     SPDLOG_INFO("created VAO");
 
-	return vao;
+    return vao;
 }
 
 void bind_buffers(GLuint vao, GLuint vbo, GLuint ibo) {
-	glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(Vertex));
+    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(Vertex));
     glEnableVertexArrayAttrib(vao, 0);
-	glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos));
-	glVertexArrayAttribBinding(vao, 0, 0);
+    glVertexArrayAttribFormat(
+        vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos)
+    );
+    glVertexArrayAttribBinding(vao, 0, 0);
 
-	glVertexArrayElementBuffer(vao, ibo);
+    glVertexArrayElementBuffer(vao, ibo);
 
-	SPDLOG_INFO("Bound vbo, ibo to the vao");
+    SPDLOG_INFO("Bound vbo, ibo to the vao");
 }
 
-GLuint load_shaders(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) {
-	const std::string vs_src = load_file(vs_path);
-	const char* vs_buf = vs_src.c_str();
-	const GLint vs_len = vs_src.length();
-	
-    const std::string fs_src = load_file(std::filesystem::path(fs_path));
-	const GLint fs_len = fs_src.length();
-	const char* fs_buf = fs_src.c_str();
+GLuint load_shaders(
+    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
+) {
+    const std::string vs_src = load_file(vs_path);
+    const char* vs_buf = vs_src.c_str();
+    const GLint vs_len = vs_src.length();
 
-	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(
-		vs,
-		1,
-		&vs_buf,
-		&vs_len
-	);
-	glCompileShader(vs);
-	SPDLOG_INFO("Created vertex shader");
+    const std::string fs_src = load_file(std::filesystem::path(fs_path));
+    const GLint fs_len = fs_src.length();
+    const char* fs_buf = fs_src.c_str();
+
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vs_buf, &vs_len);
+    glCompileShader(vs);
+    SPDLOG_INFO("Created vertex shader");
 
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(
-		fs,
-		1,
-		&fs_buf,
-		&fs_len
-	);
-	glCompileShader(fs);
-	SPDLOG_INFO("Created fragment shader");
+    glShaderSource(fs, 1, &fs_buf, &fs_len);
+    glCompileShader(fs);
+    SPDLOG_INFO("Created fragment shader");
 
-	GLuint program = glCreateProgram();
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
-	glLinkProgram(program);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
 
-	glDeleteShader(vs);
-	glDeleteShader(fs);
-	
-	SPDLOG_INFO("Created shader program");
+    glDeleteShader(vs);
+    glDeleteShader(fs);
 
-	return program;
+    SPDLOG_INFO("Created shader program");
+
+    return program;
 }
 
-Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) {
-	window = create_window(640, 480);
-	initialize_gl(640, 480);
+Renderer::Renderer(
+    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
+) {
+    window = create_window(640, 480);
+    initialize_gl(640, 480);
 
-	vbo = create_vbo();
-	ibo = create_ibo();
-	vao = create_vao();
-	bind_buffers(vao, vbo, ibo);
+    vbo = create_vbo();
+    ibo = create_ibo();
+    vao = create_vao();
+    bind_buffers(vao, vbo, ibo);
 
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
@@ -221,14 +223,16 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     size_t depth = 3;
     SvoDag svodag{depth}; // width = 256;
 
-    long limit = 1<<depth;
+    long limit = 1 << depth;
     for (long x = 0; x < limit; x++) {
         for (long y = 0; y < limit; y++) {
             for (long z = 0; z < limit; z++) {
-                long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
-                              (z - (limit>>1)) * (z - (limit>>1));
-                if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
-                // if (x == 2) 
+                long length = (x - (limit >> 1)) * (x - (limit >> 1)) +
+                              (y - (limit >> 1)) * (y - (limit >> 1)) +
+                              (z - (limit >> 1)) * (z - (limit >> 1));
+                if ((limit >> 1) * (limit >> 2) < length &&
+                    length <= (limit >> 1) * (limit >> 1))
+                // if (x == 2)
                 {
                     svodag.insert(
                         x, y, z,
@@ -247,55 +251,60 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     std::vector<SerializedNode> data = svodag.serialize();
 
     SPDLOG_INFO("Serialized SVODAG");
-    
+
     SPDLOG_INFO("Creating SSBO");
 
     // SPDLOG_INFO(std::format("{}", data));
 
-    ssbo = Ssbo<SerializedNode>(data);
-    
-	program = load_shaders(vs_path, fs_path);
+    svodag_ssbo = Ssbo<SerializedNode>(data);
+    std::vector<SvodagMetaData> metadata = {
+        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), 0}
+    };
+    metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
+
+    program = load_shaders(vs_path, fs_path);
 }
 
 Renderer::Renderer(const Renderer&& other) noexcept {
-	window = other.window;
-	vbo = other.vbo;
-	ibo = other.vbo;
-	vao = other.vao;
-	program = other.program;
+    window = other.window;
+    vbo = other.vbo;
+    ibo = other.vbo;
+    vao = other.vao;
+    program = other.program;
 }
 
 Renderer& Renderer::operator=(const Renderer&& other) noexcept {
-	window = other.window;
-	vbo = other.vbo;
-	ibo = other.vbo;
-	vao = other.vao;
-	program = other.program;
+    window = other.window;
+    vbo = other.vbo;
+    ibo = other.vbo;
+    vao = other.vao;
+    program = other.program;
 
-	return *this;
+    return *this;
 }
 
 Renderer::~Renderer() {
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &vbo);
-	glDeleteProgram(program);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteProgram(program);
 
     glfwTerminate();
 }
 
-bool Renderer::main_loop(const std::function<void ()> f) {
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+bool Renderer::main_loop(const std::function<void()> f) {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-	glUseProgram(program);
-	glBindVertexArray(vao);
-    ssbo.bind(3);
-	glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    glUseProgram(program);
+    glBindVertexArray(vao);
+    svodag_ssbo.bind(3);
+    metadata_ssbo.bind(2);
+    glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-	glfwSwapBuffers(window);
-	glfwPollEvents();
+    glfwSwapBuffers(window);
+    glfwPollEvents();
 
-	f();
-	
-	return glfwWindowShouldClose(window);
+    f();
+
+    return glfwWindowShouldClose(window);
 }
