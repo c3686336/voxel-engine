@@ -45,7 +45,6 @@ private:
 
     Ssbo<SerializedNode> svodag_ssbo;
     Ssbo<SvodagMetaData> metadata_ssbo;
-
 	gl::GLuint program;
 };
 

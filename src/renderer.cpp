@@ -19,7 +19,6 @@
 #include <imgui_impl_opengl3.h>
 
 #include <filesystem>
-
 #include <format>
 #include <string>
 
@@ -261,12 +260,6 @@ Renderer::Renderer(
 
     // SPDLOG_INFO(std::format("{}", data));
 
-    svodag_ssbo = Ssbo<SerializedNode>(data);
-    std::vector<SvodagMetaData> metadata = {
-        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), 0}
-    };
-    metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
-
 	program = load_shaders(vs_path, fs_path);
 
     IMGUI_CHECKVERSION();
@@ -276,6 +269,14 @@ Renderer::Renderer(
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
+
+    svodag_ssbo = Ssbo<SerializedNode>(data);
+    std::vector<SvodagMetaData> metadata = {
+        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), 0}
+    };
+    metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
+
+    program = load_shaders(vs_path, fs_path);
 }
 
 Renderer::Renderer(const Renderer&& other) noexcept {
@@ -314,6 +315,7 @@ bool Renderer::main_loop(const std::function<void()> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+	glfwPollEvents();
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
