@@ -42,8 +42,9 @@ public:
         camera_pos = new_pos;
     }
 
-    inline void set_camera_dir(glm::vec3 new_dir) {
+    inline void set_camera_dir(glm::vec3 new_dir, glm::vec3 new_up) {
         camera_dir = new_dir;
+        camera_up = new_up;
     }
 
     inline void set_fov(float new_fov) {
