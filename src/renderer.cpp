@@ -331,7 +331,7 @@ Renderer::~Renderer() {
     glfwTerminate();
 }
 
-bool Renderer::main_loop(const std::function<void()> f) {
+bool Renderer::main_loop(const std::function<void(GLFWwindow*)> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -341,7 +341,7 @@ bool Renderer::main_loop(const std::function<void()> f) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-	f();
+	f(window);
 
     glUseProgram(program);
     glBindVertexArray(vao);
@@ -350,7 +350,7 @@ bool Renderer::main_loop(const std::function<void()> f) {
 
     glm::vec3 camera_right = glm::cross(camera_dir, camera_up);
 
-    SPDLOG_INFO(std::format("{}", camera_right));
+    // SPDLOG_INFO(std::format("{}", camera_right));
 
     glUniform3fv(1, 1, glm::value_ptr(camera_pos));
     glUniform3fv(2, 1, glm::value_ptr(camera_dir));
