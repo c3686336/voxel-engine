@@ -214,7 +214,7 @@ GLuint load_shaders(
     return program;
 }
 
-Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera_pos(glm::vec3(-1.f, .5f, .5f)), camera_dir(glm::vec3(1.f, 0.f, 0.f)), camera_up(glm::vec3(0.f, 1.f, 0.f)), fov(std::numbers::pi/2.f), aspect(1.0), has_value(true) {
+Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera(), has_value(true) {
 	window = create_window(640, 480);
 	initialize_gl(640, 480);
 
@@ -289,9 +289,8 @@ Renderer::Renderer(Renderer&& other) noexcept {
     metadata_ssbo = std::move(other.metadata_ssbo);
     svodag_ssbo = std::move(other.svodag_ssbo);
 
-    camera_pos = other.camera_pos;
-    camera_dir = other.camera_dir;
-
+    camera = other.camera;
+    
     has_value = other.has_value;
     other.has_value = false;
 }
@@ -307,8 +306,9 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
     swap(svodag_ssbo, other.svodag_ssbo);
     swap(metadata_ssbo, other.metadata_ssbo);
 
-    swap(camera_pos, other.camera_pos);
-    swap(camera_dir, other.camera_dir);
+    // swap(camera_pos, other.camera_pos);
+    // swap(camera_dir, other.camera_dir);
+    camera = other.camera; // Just copy it
 
     swap(has_value, other.has_value);
 
@@ -331,7 +331,7 @@ Renderer::~Renderer() {
     glfwTerminate();
 }
 
-bool Renderer::main_loop(const std::function<void(GLFWwindow*)> f) {
+bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -341,23 +341,23 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*)> f) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-	f(window);
+	f(window, camera);
 
     glUseProgram(program);
     glBindVertexArray(vao);
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
 
-    glm::vec3 camera_right = glm::cross(camera_dir, camera_up);
+    glm::vec3 x_basis = camera.camera_x_basis();
+    glm::vec3 y_basis = camera.camera_y_basis();
+    glm::vec3 pos = camera.get_pos();
+    glm::vec3 dir = camera.get_dir();
 
-    // SPDLOG_INFO(std::format("{}", camera_right));
-
-    glUniform3fv(1, 1, glm::value_ptr(camera_pos));
-    glUniform3fv(2, 1, glm::value_ptr(camera_dir));
-    glUniform3fv(5, 1, glm::value_ptr(camera_up));
-    glUniform3fv(6, 1, glm::value_ptr(camera_right));
-    glUniform1f(3, fov);
-    glUniform1f(4, aspect);
+    glUniform3fv(1, 1, glm::value_ptr(pos));
+    glUniform3fv(2, 1, glm::value_ptr(dir));
+    
+    glUniform3fv(5, 1, glm::value_ptr(x_basis));
+    glUniform3fv(4, 1, glm::value_ptr(y_basis));
     
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 

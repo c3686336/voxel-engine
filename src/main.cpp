@@ -4,6 +4,10 @@
 #include "svodag.hpp"
 #include "vertex.hpp"
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
 
@@ -30,74 +34,85 @@ int main(int argc, char** argv) {
         std::filesystem::path("simple.frag")
     );
 
-    renderer.set_camera_dir(vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
-    renderer.set_camera_pos(vec3(0.5, 0.5, +2.0));
+    bool grabbed = false;
+    auto prev_escape_state = GLFW_RELEASE;
 
-    vec3 normal_camera_dir = vec3(0.0, 0.0, -1.0);
-    vec3 camera_up = vec3(0.0, 1.0, 0.0);
+    float speed = 1.0f;
+    float sensitivity = 0.7f;
 
-    quat camera_quat = quat(1, 0, 0, 0);
-    vec3 camera_pos = vec3(0.5, 0.5, 2.0);
+    float yaw = 0.0f;
+    float pitch = 0.0f;
 
     bool should_close = false;
     double timer = glfwGetTime();
     while (!should_close) {
-        should_close = renderer.main_loop([&](GLFWwindow* window) {
+        should_close = renderer.main_loop([&](GLFWwindow* window,
+                                              Camera& camera) {
+            ImGui::SliderFloat("Movement Speed", &speed, 0.0f, 10.0f);
+            ImGui::SliderFloat("Mouse Sensitivity", &sensitivity, 0.0f, 4.0f);
+            
             double new_time = glfwGetTime();
-            float dt = timer - new_time;
+            float dt = -timer + new_time;
             timer = new_time;
 
-            if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-                camera_quat =
-                    rotate(camera_quat, -dt * 1.0f, vec3(1.0, 0.0, 0.0));
-            }
-
-            if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-                camera_quat =
-                    rotate(camera_quat, dt * 1.0f, vec3(1.0, 0.0, 0.0));
-            }
-
-            if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-                camera_quat =
-                    rotate(camera_quat, -dt * 1.0f, vec3(0.0, 1.0, 0.0));
-            }
-
-            if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-                camera_quat =
-                    rotate(camera_quat, dt * 1.0f, vec3(0.0, 1.0, 0.0));
-            }
-
-            vec3 camera_dir = camera_quat * normal_camera_dir;
-            vec3 camera_right = cross(camera_dir, camera_up);
-
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-                camera_pos += -camera_dir * dt;
+                camera.move(speed * dt * camera.forward());
             }
 
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-                camera_pos += camera_right * dt;
+                camera.move(speed * dt * camera.leftward());
             }
 
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-                camera_pos += camera_dir * dt;
+                camera.move(speed * dt * camera.backward());
             }
 
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-                camera_pos += -camera_right * dt;
+                camera.move(speed * dt * camera.rightward());
             }
 
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-                camera_pos += -camera_up * dt;
+                camera.move(speed * dt * camera.upward());
             }
 
             if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-                camera_pos += camera_up * dt;
+                camera.move(speed * dt * camera.downward());
             }
 
-            renderer.set_camera_dir(
-                camera_dir, cross(camera_dir, camera_right)
-            );
-            renderer.set_camera_pos(camera_pos);
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS &&
+                prev_escape_state == GLFW_RELEASE) {
+                grabbed = !grabbed;
+
+                if (grabbed) {
+                    glfwSetInputMode(
+                        renderer.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED
+                    );
+                } else {
+                    glfwSetInputMode(
+                        renderer.get_window(), GLFW_CURSOR, GLFW_CURSOR_NORMAL
+                    );
+                }
+            }
+
+            if (grabbed) {
+                double x, y;
+                glfwGetCursorPos(window, &x, &y);
+
+                int width, height;
+                glfwGetWindowSize(window, &width, &height);
+
+                float scaled_x = x / (float)width * sensitivity;
+                float scaled_y = y / (float)height * sensitivity;
+
+                yaw = -scaled_x;
+                pitch = clamp<float>(
+                    -scaled_y, -pi<float>() * 0.49, pi<float>() * 0.49
+                );
+            }
+
+            prev_escape_state = glfwGetKey(window, GLFW_KEY_ESCAPE);
+
+            camera.set_dir(pitch, yaw);
         });
     }
 

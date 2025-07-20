@@ -5,6 +5,7 @@
 #include "vertex.hpp"
 #include "ssbo.hpp"
 #include "svodag.hpp"
+#include "camera.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -35,21 +36,8 @@ public:
 	Renderer(Renderer&& other) noexcept;
 	Renderer& operator=(Renderer&& other) noexcept;
 
-	bool main_loop(const std::function<void (GLFWwindow*)> f);
+	bool main_loop(const std::function<void (GLFWwindow*, Camera&)> f);
     GLFWwindow* get_window() const;
-
-    inline void set_camera_pos(glm::vec3 new_pos) {
-        camera_pos = new_pos;
-    }
-
-    inline void set_camera_dir(glm::vec3 new_dir, glm::vec3 new_up) {
-        camera_dir = new_dir;
-        camera_up = new_up;
-    }
-
-    inline void set_fov(float new_fov) {
-        fov = new_fov;
-    }
 
 	virtual ~Renderer();
 private:
@@ -62,11 +50,7 @@ private:
     Ssbo<SvodagMetaData> metadata_ssbo;
 	gl::GLuint program;
 
-    glm::vec3 camera_pos;
-    glm::vec3 camera_dir;
-    glm::vec3 camera_up;
-    float fov;
-    float aspect;
+    Camera camera;
 
     bool has_value;
 };

@@ -6,11 +6,8 @@ layout(location = 0) in vec2 frag_pos;
 
 layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
-layout(location = 5) uniform vec3 camera_up;
-layout(location = 6) uniform vec3 camera_right;
-
-layout(location = 3) uniform float fov;
-layout(location = 4) uniform float aspect;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
 
 struct Node {
     vec4 color;
@@ -25,7 +22,7 @@ struct SvodagMetaData {
 
 struct QueryResult {
     uint at_level; // 0: At deepest level, MLEVEL: at root, because the level is in the unit of branches
-    vec4 color;
+    Node node;
 };
 
 layout(std430, binding = 3) buffer one {
@@ -82,7 +79,7 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
         uint new_idx = nodes[n_idx].addr[index];
 
         if (new_idx == 0) {
-            return QueryResult(i, nodes[n_idx].color);
+            return QueryResult(i, nodes[n_idx]);
         }
         // We are guaranteed to get new_idx == 0 when i == 0
 
@@ -90,7 +87,7 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
     }
 
     // Just to be safe
-    return QueryResult(0, nodes[n_idx].color);
+    return QueryResult(0, nodes[n_idx]);
 }
 
 vec4 raymarch(uint index, vec3 origin, vec3 dir) {
@@ -116,8 +113,8 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         vec3 biased = cur_pos + bias;
         QueryResult result = query(svodag_index, biased, level);
 
-        if (result.color.a > 0.0) {
-            return result.color;
+        if (result.node.color.a > 0.0) {
+            return result.node.color;
         }
 
         float size = level_to_size(result.at_level, level);
@@ -151,12 +148,12 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
 }
 
 void main() {
+    vec4 origin = metadata[0].model_inv * vec4(camera_pos, 1.0);
+    vec4 dir = metadata[0].model_inv * vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0);
+
     frag_color = raymarch(
             0,
-            (metadata[0].model_inv * vec4(camera_pos, 1.0)).xyz,
-            normalize((metadata[0].model_inv * vec4(
-                           camera_dir + (frag_pos.y*camera_up + frag_pos.x*camera_right) * 0.5 * tan(fov/2.0),
-                    0.0
-                )).xyz)
+            origin.xyz,
+            normalize(dir.xyz)
         );
 }
