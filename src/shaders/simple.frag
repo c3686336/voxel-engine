@@ -1,6 +1,8 @@
 #version 450 core
 #define INF 1.0/0.0
 #define PI 3.1415926538
+#define SUN_DIR normalize(vec3(0.3, 0.7, 0.5))
+#define SUN_COLOR vec3(1.0, 1.0, 1.0)
 
 layout(location = 0) in vec2 frag_pos;
 
@@ -99,7 +101,7 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
     return QueryResult(0, nodes[n_idx]);
 }
 
-vec4 raymarch(uint index, vec3 origin, vec3 dir) {
+bool raymarch(uint index, vec3 origin, vec3 dir, out vec3 hit_pos, out QueryResult hit_query, out vec3 normal) {
     uint level = metadata[index].max_level; // Need to set this through uniform or ssbo content
     uint svodag_index = metadata[index].at_index;
     precise vec3 dir_inv = vec3(1.0) / dir;
@@ -110,7 +112,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     bool intersected = minmax.y > minmax.x;
 
     if (!intersected) {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        return false;
     }
 
     vec3 bias = level_to_size(0, level) * bias_amt * dir;
@@ -121,7 +123,21 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         QueryResult result = query(svodag_index, cur_pos, level);
 
         if (result.node.mat_id != 0) {
-            return materials[result.node.mat_id].albedo;
+            hit_pos = cur_pos - bias;
+            hit_query = result;
+
+            vec3 minpos = snap_pos_down(
+                cur_pos,
+                result.at_level,
+                level
+                );
+            float size = level_to_size(result.at_level, level);
+            vec3 maxpos = minpos + size;
+            // Scale cur_pos to -1, -1, -1 ~ 1, 1, 1
+            vec3 vox_pos = (2.0 * (cur_pos - minpos) / size) - 1.0;
+            
+            normal = normalize(step(0.999, vox_pos) - step(0.999, -vox_pos));
+            return true;
         }
 
         float size = level_to_size(result.at_level, level);
@@ -151,16 +167,48 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     //     // return vec4(0.0, 0.0, 1.0, 1.0);
     // }
 
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    return false;
 }
 
 void main() {
     vec4 origin = metadata[0].model_inv * vec4(camera_pos, 1.0);
     vec4 dir = metadata[0].model_inv * vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0);
 
-    frag_color = raymarch(
+    vec3 hit_pos;
+    QueryResult hit_query;
+    vec3 normal;
+
+    bool result = raymarch(
             0,
             origin.xyz,
-            normalize(dir.xyz)
+            normalize(dir.xyz),
+            hit_pos,
+            hit_query,
+            normal
         );
+
+    if (result) {
+        // Shadow pass
+        vec3 occluder_pos;
+        QueryResult _ignore;
+        vec3 _normal;
+        
+        bool shadow_result = raymarch(
+            0,
+            hit_pos + bias_amt * normal,
+            SUN_DIR,
+            occluder_pos,
+            _ignore,
+            _normal
+            );
+
+        if (shadow_result) {
+            frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+        } else {
+            frag_color = materials[hit_query.node.mat_id].albedo * vec4(SUN_COLOR, 1.0) * dot(normal, SUN_DIR);
+        }
+        
+    } else {
+        frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }
