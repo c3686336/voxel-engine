@@ -6,11 +6,8 @@ layout(location = 0) in vec2 frag_pos;
 
 layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
-layout(location = 5) uniform vec3 camera_up;
-layout(location = 6) uniform vec3 camera_right;
-
-layout(location = 3) uniform float fov;
-layout(location = 4) uniform float aspect;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
 
 struct Node {
     vec4 color;
@@ -151,12 +148,12 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
 }
 
 void main() {
+    vec4 origin = metadata[0].model_inv * vec4(camera_pos, 1.0);
+    vec4 dir = metadata[0].model_inv * vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0);
+
     frag_color = raymarch(
             0,
-            (metadata[0].model_inv * vec4(camera_pos, 1.0)).xyz,
-            normalize((metadata[0].model_inv * vec4(
-                           camera_dir + (frag_pos.y*camera_up + frag_pos.x*camera_right) * 0.5 * tan(fov/2.0),
-                    0.0
-                )).xyz)
+            origin.xyz,
+            normalize(dir.xyz)
         );
 }

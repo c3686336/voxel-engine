@@ -31,7 +31,8 @@ int main(int argc, char** argv) {
 
     bool should_close = false;
     while (!should_close) {
-        should_close = renderer.main_loop([&](GLFWwindow* window) {
+        should_close = renderer.main_loop([&](GLFWwindow* window,
+                                              Camera& camera) {
             double new_time = glfwGetTime();
     }
 
