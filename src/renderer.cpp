@@ -223,6 +223,13 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     vao = create_vao();
     bind_buffers(vao, vbo, ibo);
 
+    SPDLOG_INFO("Creating matid list");
+    materials.initialize();
+    MatID_t white = materials.register_material({
+        glm::vec4(1.0, 1.0, 1.0, 0.0) 
+    }).value(); // Just crash, unlikely
+    materials.update_ssbo();
+
     // TODO: Separate this out
     SPDLOG_INFO("Creating SVODAG");
 
@@ -242,10 +249,7 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
                 {
                     svodag.insert(
                         x, y, z,
-                        glm::vec4(
-                            (float)x / (float)limit, (float)y / (float)limit,
-                            (float)z / (float)limit, 1.0f
-                        )
+                        white
                     );
                 }
             }
@@ -345,6 +349,7 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     glBindVertexArray(vao);
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
+    materials.bind(6);
 
     glm::vec3 x_basis = camera.camera_x_basis();
     glm::vec3 y_basis = camera.camera_y_basis();

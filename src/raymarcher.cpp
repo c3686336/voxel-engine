@@ -68,8 +68,9 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         ray.dir.z >= 0 ? 1 : -1
     );
 
-    auto [tmin, tmax] = slab_test(glm::vec3(0.0f), glm::vec3(1.0f), ray.origin, dir_inv);
-    
+    auto [tmin, tmax] =
+        slab_test(glm::vec3(0.0f), glm::vec3(1.0f), ray.origin, dir_inv);
+
     tmin = std::max(0.0f, tmin);
 
     bool intersected = (tmax > tmin);
@@ -97,9 +98,9 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         QueryResult result =
             svodag.query(current_pos + bias); // Without bias as first test
 
-        if (result.node->get_color().a > 0.0f) {
-            // This currently does not support alpha blending
-            auto color = result.node->get_color();
+        if (result.node->get_mat_id() != 0) {
+            // STUB
+            auto color = glm::vec4(1.0, 1.0, 1.0, 1.0);
             // return glm::vec4(color.r, color.g, color.b, 1.0f);
             return color;
             // return glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -110,7 +111,8 @@ raymarch(const SvoDag& svodag, const Ray ray) {
         float size = level_to_size(result.at_level, level);
 
         // glm::vec3 biased_pos = current_pos + size*0.1f*ray.dir;
-        glm::vec3 current_voxel_start = snap_pos(current_pos + bias, result.at_level, level);
+        glm::vec3 current_voxel_start =
+            snap_pos(current_pos + bias, result.at_level, level);
         glm::vec3 sign(
             current_voxel_start.x == current_pos.x ? dir_sign.x : +1.f,
             current_voxel_start.y == current_pos.y ? dir_sign.y : +1.f,
@@ -121,9 +123,12 @@ raymarch(const SvoDag& svodag, const Ray ray) {
 
         // sign = glm::vec3(1.f, 1.f, 1.f);
 
-        // assert(current_voxel_start.x == current_pos.x || current_voxel_start.y == current_pos.y || current_voxel_start.z == current_pos.z);
+        // assert(current_voxel_start.x == current_pos.x ||
+        // current_voxel_start.y == current_pos.y || current_voxel_start.z ==
+        // current_pos.z);
 
-        glm::vec3 current_voxel_end = snap_pos_up(current_pos + bias, result.at_level, level);
+        glm::vec3 current_voxel_end =
+            snap_pos_up(current_pos + bias, result.at_level, level);
         //    current_voxel_start + glm::vec3(size) * sign;
 
         auto [tmin, tmax] = slab_test(
@@ -157,21 +162,20 @@ int main(int argc, char** argv) {
     size_t depth = 3;
     SvoDag svodag{depth}; // width = 256;
 
-    long limit = 1<<depth;
+    long limit = 1 << depth;
     for (long x = 0; x < limit; x++) {
         for (long y = 0; y < limit; y++) {
             for (long z = 0; z < limit; z++) {
-                long length = (x - (limit>>1)) * (x - (limit>>1)) + (y - (limit>>1)) * (y - (limit>>1)) +
-                              (z - (limit>>1)) * (z - (limit>>1));
-                if ((limit>>1)*(limit>>2) < length && length <= (limit>>1)*(limit>>1))
-                // if (x == 1) 
+                long length = (x - (limit >> 1)) * (x - (limit >> 1)) +
+                              (y - (limit >> 1)) * (y - (limit >> 1)) +
+                              (z - (limit >> 1)) * (z - (limit >> 1));
+                if ((limit >> 1) * (limit >> 2) < length &&
+                    length <= (limit >> 1) * (limit >> 1))
+                // if (x == 1)
                 {
                     svodag.insert(
                         x, y, z,
-                        glm::vec4(
-                            (float)x / (float)limit, (float)y / (float)limit,
-                            (float)z / (float)limit, 1.0f
-                        )
+                        0 // STUB
                     );
                 }
             }
@@ -210,7 +214,8 @@ int main(int argc, char** argv) {
 
             data.push_back(float_to_255(raymarch(svodag, {origin, dir})));
             // data.push_back(float_to_255(raymarch(
-            //     svodag, {{0.0f, j / static_cast<float>(img_width) * film_width,
+            //     svodag, {{0.0f, j / static_cast<float>(img_width) *
+            //     film_width,
             //               i / static_cast<float>(img_height) * film_height},
             //              {1.0f, 0.0f, 0.0f}}
             // )));

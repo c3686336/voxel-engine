@@ -6,6 +6,8 @@
 #include "ssbo.hpp"
 #include "svodag.hpp"
 #include "camera.hpp"
+#include "material.hpp"
+#include "material_list.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -45,10 +47,11 @@ private:
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
+	gl::GLuint program;
 
     Ssbo<SerializedNode> svodag_ssbo;
     Ssbo<SvodagMetaData> metadata_ssbo;
-	gl::GLuint program;
+    MaterialList<SimpleMaterial, 1024> materials;
 
     Camera camera;
 

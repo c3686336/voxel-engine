@@ -30,15 +30,15 @@ TEST_CASE( "Svo-Dag Construction", "[svodag]") {
 
 	// CAPTURE(result.r, result.g, result.b, result.a);
 
-	REQUIRE(svodag.get(glm::vec3(0.0f, 0.0f, 0.0f)) == glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+	REQUIRE(svodag.get(glm::vec3(0.0f, 0.0f, 0.0f)) == 0);
 
 	svodag.insert(
         glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec4(1.0f)
+        1
 	);
 
 	INFO(F("{}", svodag.get(glm::vec3(0.0f, 0.0f, 0.0f))));
-	REQUIRE(svodag.get(glm::vec3(0.0f, 0.0f, 0.0f)) == glm::vec4(1.0f));
+	REQUIRE(svodag.get(glm::vec3(0.0f, 0.0f, 0.0f)) == 1);
 }
 
 TEST_CASE("SVODAG insertion", "[svodag]") {
@@ -51,14 +51,13 @@ TEST_CASE("SVODAG insertion", "[svodag]") {
 	for (int i=0;i<1000;i++) {
 		SECTION("One of the random tests...") {
 			glm::vec3 pos = {dis(gen), dis(gen), dis(gen)};
-			glm::vec4 color = {dis(gen), dis(gen), dis(gen), dis(gen)};
 
-			svodag.insert(pos, color);
+			svodag.insert(pos, i+1);
 
-			INFO(std::format("Expected: {}", color));
-			INFO(std::format("Instead: {}", svodag.get(pos)));
+			INFO(std::format("Expected: {}", i+1));
+			INFO(std::format("Instead: {}", i+1));
 			
-			REQUIRE(svodag.get(pos) == color);
+			REQUIRE(svodag.get(pos) == i+1);
 		}
 	}
 }
@@ -74,8 +73,8 @@ TEST_CASE("SVODAG insertion", "[svodag]") {
 TEST_CASE("SVODAG insertion at x=0, y=128, z=128", "[svodag]") {
 	SvoDag svodag{8};
 
-	svodag.insert(0, 128, 128, glm::vec4(1.0f));
-	REQUIRE(svodag.get(0, 128, 128) == glm::vec4(1.0f));
+	svodag.insert(0, 128, 128, 1);
+	REQUIRE(svodag.get(0, 128, 128) == 1);
 }
 
 TEST_CASE("level_to_size function works properly", "[svodag] [util]") {
@@ -95,10 +94,7 @@ TEST_CASE("Svodag query", "[svodag]") {
                 if (16383 < length && length < 16385) {
                     svodag.insert(
                         x, y, z,
-                        glm::vec4(
-                            (float)x / 256.0f, (float)y / 256.0f, z / 256.0f,
-                            1.0f
-                        )
+                        1
                     );
                 }
             }

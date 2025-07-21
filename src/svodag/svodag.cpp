@@ -22,12 +22,12 @@ size_t bitmask_to_index(
 }
 
 // Implementations
-SvoNode::SvoNode() noexcept : SvoNode(glm::vec4(0.0f)){};
+SvoNode::SvoNode() noexcept : SvoNode(0){};
 
-SvoNode::SvoNode(glm::vec4 new_color) noexcept
-    : color(std::move(new_color)), children(){};
+SvoNode::SvoNode(MatID_t mat_id) noexcept
+    : mat_id(mat_id), children(){};
 
-SvoNode::SvoNode(const SvoNode& other) noexcept : color(other.color) {
+SvoNode::SvoNode(const SvoNode& other) noexcept : mat_id(other.mat_id) {
     for (int i = 0; i < 8; i++) {
         // Refcount is decremented
         children[i] = std::make_shared<SvoNode>(*other.children[i]);
@@ -35,7 +35,7 @@ SvoNode::SvoNode(const SvoNode& other) noexcept : color(other.color) {
 }
 
 SvoNode::SvoNode(SvoNode&& other) noexcept
-    : color(std::move(other.color)), children(std::move(other.children)) {
+    : mat_id(other.mat_id), children(std::move(other.children)) {
     other.children =
         std::array<std::shared_ptr<SvoNode>, 8>(); // So that the dtor is no-op.
 };
@@ -47,7 +47,7 @@ SvoNode& SvoNode::operator=(SvoNode other) noexcept {
 }
 
 SvoNode& SvoNode::operator=(SvoNode&& other) noexcept {
-    color = std::move(other.color);
+    mat_id = std::move(other.mat_id);
     children = std::move(other.children);
     other.children =
         std::array<std::shared_ptr<SvoNode>, 8>(); // So that the dtor is no-op.
@@ -57,13 +57,13 @@ SvoNode& SvoNode::operator=(SvoNode&& other) noexcept {
 
 void SvoNode::insert(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
-    const size_t level, const glm::vec4 new_color
+    const size_t level, const MatID_t new_mat_id
 ) noexcept {
     // TODO: Needs significant refactoring if the structure is DAG. Just
     // allocate new node path then. shared_ptr will handle the rest.
 
     if (level == 0) {
-        this->color = std::move(new_color);
+        this->mat_id = new_mat_id;
         return;
     }
 
@@ -91,29 +91,31 @@ void SvoNode::insert(
 
     children.at(index)->insert(
         std::move(x_bitmask), std::move(y_bitmask), std::move(z_bitmask),
-        level - 1, std::move(new_color)
+        level - 1, new_mat_id
     );
 
     // Also reset the color;
-    color = glm::vec4(0.0f);
-    for (int i = 0; i < 8; i++) {
-        if (children[i]) {
-            color += children[i]->color / 8.0f;
-        }
-    }
+    mat_id = 0;
+    // TODO: Store average albedo directly
+    // color = glm::vec4(0.0f);
+    // for (int i = 0; i < 8; i++) {
+    //     if (children[i]) {
+    //         color += children[i]->color / 8.0f;
+    //     }
+    // }
 }
 
-const glm::vec4 SvoNode::get(
+MatID_t SvoNode::get(
     size_t x_bitmask, size_t y_bitmask, size_t z_bitmask, size_t level
 ) const noexcept {
     if (level == 0) {
-        return color;
+        return mat_id;
     }
 
     size_t index = bitmask_to_index(x_bitmask, y_bitmask, z_bitmask, level);
 
     if (!children[index]) {
-        return color;
+        return mat_id;
     } else {
         return children.at(index)->get(
             x_bitmask, y_bitmask, z_bitmask, level - 1
@@ -121,13 +123,13 @@ const glm::vec4 SvoNode::get(
     }
 }
 
-const glm::vec4 SvoNode::get_color() const noexcept { return color; }
+MatID_t SvoNode::get_mat_id() const noexcept { return mat_id; }
 
 void swap(SvoNode& first, SvoNode& second) {
     using std::swap;
 
-    std::swap(first.color, second.color);
-    std::swap(first.children, second.children);
+    swap(first.mat_id, second.mat_id);
+    swap(first.children, second.children);
 }
 
 const std::array<std::shared_ptr<SvoNode>, 8>
@@ -165,19 +167,19 @@ const std::optional<QueryResult> SvoNode::query(
 SvoDag::SvoDag() noexcept : root(std::make_shared<SvoNode>()), level(8 /*2^8^3 = 256^3 voxels*/) {};
 SvoDag::SvoDag(size_t level) noexcept : root(std::make_shared<SvoNode>()), level(level) {};
 
-void SvoDag::insert(const glm::vec3 pos, const glm::vec4 color) noexcept {
+void SvoDag::insert(const glm::vec3 pos, const MatID_t mat_id) noexcept {
     size_t x_bitmask = pos.x * (1 << level);
     size_t y_bitmask = pos.y * (1 << level);
     size_t z_bitmask = pos.z * (1 << level);
 
-    insert(x_bitmask, y_bitmask, z_bitmask, color);
+    insert(x_bitmask, y_bitmask, z_bitmask, mat_id);
 };
 
 void SvoDag::insert(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
-    glm::vec4 color
+    const MatID_t mat_id
 ) noexcept {
-    root->insert(x_bitmask, y_bitmask, z_bitmask, level, color);
+    root->insert(x_bitmask, y_bitmask, z_bitmask, level, mat_id);
 }
 
 const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
@@ -211,7 +213,7 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
 
     SPDLOG_INFO(cnt);
 
-    buffer[1] = SerializedNode{root->get_color(), std::array<Addr_t, 8>{0}};
+    buffer[1] = SerializedNode{root->get_mat_id(), std::array<Addr_t, 8>{0}};
     for (int i = 0; i < 8; i++) {
         if (root->get_children()[i]) {
             buffer[1].addr[i] = map[root->get_children()[i]];
@@ -222,7 +224,7 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
         // SPDLOG_INFO(std::format("{}", i->second));
 
         buffer[i->second] =
-            SerializedNode{i->first->get_color(), std::array<Addr_t, 8>{0}};
+            SerializedNode{i->first->get_mat_id(), std::array<Addr_t, 8>{0}};
 
         for (int j = 0; j < 8; j++) {
             if (i->first->get_children()[j]) {
@@ -242,7 +244,7 @@ std::tuple<size_t, size_t, size_t> pos_to_bitmask(const glm::vec3 pos, size_t le
 	);
 }
 
-const glm::vec4 SvoDag::get(const glm::vec3 pos) const noexcept {
+MatID_t SvoDag::get(const glm::vec3 pos) const noexcept {
 	auto bitmask = pos_to_bitmask(pos, level);
 
 	size_t x_bitmask = std::get<0>(bitmask);
@@ -252,7 +254,7 @@ const glm::vec4 SvoDag::get(const glm::vec3 pos) const noexcept {
     return get(x_bitmask, y_bitmask, z_bitmask);
 }
 
-const glm::vec4 SvoDag::get(
+MatID_t SvoDag::get(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask
 ) const noexcept {
     return root->get(x_bitmask, y_bitmask, z_bitmask, level);

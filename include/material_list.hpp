@@ -16,7 +16,9 @@ template <class T, size_t L> // L: Size of the buffer, including the `Null`
                              // material.
 class MaterialList {
 public:
-    MaterialList() noexcept {
+    MaterialList() noexcept : has_data(false) {};
+
+    void initialize() noexcept {
         gl::glGenBuffers(1, &ssbo);
         gl::glBindBuffer(gl::GLenum::GL_SHADER_STORAGE_BUFFER, ssbo);
         glNamedBufferStorage(
@@ -25,7 +27,7 @@ public:
         );
 
         has_data = true;
-    };
+    }
 
     ~MaterialList() noexcept {
         if (!has_data)
@@ -94,10 +96,10 @@ public:
         if (n_materials == n_materials_ingpu)
             return;
 
-        gl::glBufferSubData(
+        gl::glNamedBufferSubData(
             ssbo, n_materials_ingpu * sizeof(T),
             (n_materials - n_materials_ingpu) * sizeof(T),
-            materials.get() + n_materials_ingpu
+            materials.data() + n_materials_ingpu
         );
 
         n_materials_ingpu = n_materials;

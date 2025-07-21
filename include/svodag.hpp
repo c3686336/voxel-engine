@@ -2,6 +2,7 @@
 #define SVODAG_H
 
 #include "common.hpp"
+#include "material_list.hpp"
 
 #include <glm/glm.hpp>
 
@@ -26,8 +27,8 @@ typedef uint32_t Addr_t; // Have to fix the paddings before changing this type
 // vec2: no padding, alignment = size
 // vec3, vec4: pad to match the size of vec4, alignment = size + padding
 //
-typedef struct alignas(16) {
-    alignas(16) glm::vec4 color; // 16 bytes
+typedef struct alignas(4) {
+    alignas(sizeof(MatID_t)) MatID_t mat_id; // 4 bytes
     // Read as single vec4, overall size 16B
 
     alignas(4) std::array<Addr_t, 8> addr; // 4 Bytes * 8 = 32 Bytes (for now)
@@ -54,8 +55,9 @@ template <typename CharT> struct std::formatter<SerializedNode, CharT> {
     auto format(SerializedNode p, FormatContext& fc) const {
         return std::format_to(
             fc.out(),
-            "{{Color: {}, Connected to: [{}, {}, {}, {}, {}, {}, {}, {}]}}\n",
-            p.color, p.addr[0], p.addr[1], p.addr[2], p.addr[3], p.addr[4],
+            "{{Material id: {}, Connected to: [{}, {}, {}, {}, {}, {}, {}, "
+            "{}]}}\n",
+            p.mat_id, p.addr[0], p.addr[1], p.addr[2], p.addr[3], p.addr[4],
             p.addr[5], p.addr[6], p.addr[7]
         );
     }
@@ -65,7 +67,7 @@ template <typename CharT> struct std::formatter<SerializedNode, CharT> {
 class SvoNode {
 public:
     SvoNode() noexcept;
-    SvoNode(glm::vec4 new_color) noexcept;
+    SvoNode(MatID_t mat_id) noexcept;
     SvoNode(const SvoNode& other) noexcept;
     SvoNode(SvoNode&& other) noexcept;
     SvoNode& operator=(SvoNode other) noexcept;
@@ -73,12 +75,12 @@ public:
 
     void insert(
         const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
-        const size_t level, const glm::vec4 new_color
+        const size_t level, const MatID_t new_mat_id
     ) noexcept;
-    const glm::vec4
+    MatID_t
     get(const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
         const size_t level) const noexcept;
-    const glm::vec4 get_color() const noexcept;
+    MatID_t get_mat_id() const noexcept;
     const std::array<std::shared_ptr<SvoNode>, 8> get_children() const noexcept;
     const std::optional<QueryResult> query(
         const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
@@ -88,7 +90,7 @@ public:
     friend void swap(SvoNode& first, SvoNode& second);
 
 private:
-    glm::vec4 color;
+    MatID_t mat_id;
     // std::shared_ptr<std::array<SvoNode, 8>>
     //    children; // TODO swap shared_ptr and array
     std::array<std::shared_ptr<SvoNode>, 8> children;
@@ -99,13 +101,13 @@ public:
     SvoDag() noexcept;
     SvoDag(size_t level) noexcept;
 
-    void insert(const glm::vec3 pos, const glm::vec4 new_color) noexcept;
+    void insert(const glm::vec3 pos, const MatID_t new_mat_id) noexcept;
     void insert(
         const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
-        glm::vec4 color
+        MatID_t mat_id 
     ) noexcept;
-    const glm::vec4 get(const glm::vec3 pos) const noexcept;
-    const glm::vec4
+    MatID_t get(const glm::vec3 pos) const noexcept;
+    MatID_t
     get(const size_t x_bitmask, const size_t y_bitmask,
         const size_t z_bitmask) const noexcept;
     const QueryResult
@@ -124,23 +126,31 @@ inline float level_to_size(const size_t level, const size_t max_level) {
     return powf(0.5f, (float)(max_level - level));
 }
 
-inline const glm::vec3 snap_pos(const glm::vec3 pos, size_t level, size_t max_level) {
+inline const glm::vec3
+snap_pos(const glm::vec3 pos, size_t level, size_t max_level) {
     return glm::vec3(
-        floorf(pos.x * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
-        floorf(pos.y * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
-        floorf(pos.z * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level))
+        floorf(pos.x * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level)),
+        floorf(pos.y * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level)),
+        floorf(pos.z * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level))
     );
 }
 
-inline const glm::vec3 snap_pos_up(const glm::vec3 pos, size_t level, size_t max_level) {
+inline const glm::vec3
+snap_pos_up(const glm::vec3 pos, size_t level, size_t max_level) {
     return glm::vec3(
-        ceilf(pos.x * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
-        ceilf(pos.y * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level)),
-        ceilf(pos.z * float(1 << (max_level - level))) * powf(0.5f, (float)(max_level - level))
+        ceilf(pos.x * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level)),
+        ceilf(pos.y * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level)),
+        ceilf(pos.z * float(1 << (max_level - level))) *
+            powf(0.5f, (float)(max_level - level))
     );
 }
 
-
-std::tuple<size_t, size_t, size_t> pos_to_bitmask(const glm::vec3 pos, size_t level) noexcept ;
+std::tuple<size_t, size_t, size_t>
+pos_to_bitmask(const glm::vec3 pos, size_t level) noexcept;
 
 #endif

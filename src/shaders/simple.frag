@@ -11,7 +11,7 @@ layout(location = 4) uniform vec3 camera_up;
 layout(location = 6) uniform float bias_amt;
 
 struct Node {
-    vec4 color;
+    uint mat_id;
     uint addr[8];
 };
 
@@ -26,12 +26,20 @@ struct QueryResult {
     Node node;
 };
 
+struct SimpleMaterial {
+    vec4 albedo;
+};
+
 layout(std430, binding = 3) buffer one {
     Node nodes[];
 };
 
 layout(std430, binding = 2) buffer two {
     SvodagMetaData metadata[];
+};
+
+layout(std430, binding = 6) buffer matids {
+    SimpleMaterial materials[];
 };
 
 out vec4 frag_color;
@@ -102,7 +110,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     bool intersected = minmax.y > minmax.x;
 
     if (!intersected) {
-        return vec4(1.0, 0.0, 0.0, 1.0);
+        return vec4(0.0, 0.0, 0.0, 1.0);
     }
 
     vec3 bias = level_to_size(0, level) * bias_amt * dir;
@@ -112,8 +120,8 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     do {
         QueryResult result = query(svodag_index, cur_pos, level);
 
-        if (result.node.color.a > 0.0) {
-            return result.node.color;
+        if (result.node.mat_id != 0) {
+            return materials[result.node.mat_id].albedo;
         }
 
         float size = level_to_size(result.at_level, level);
@@ -143,7 +151,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     //     // return vec4(0.0, 0.0, 1.0, 1.0);
     // }
 
-    return vec4(0.0, 0.0, 1.0, 1.0);
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 void main() {
