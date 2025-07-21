@@ -8,6 +8,7 @@ layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
 layout(location = 5) uniform vec3 camera_right;
 layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
 
 struct Node {
     vec4 color;
@@ -105,6 +106,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     }
 
     vec3 cur_pos = origin + dir * minmax.x;
+    vec3 bias = level_to_size(0, level) * bias_amt * dir;
     uint iters = 0;
 
     vec3 bias = level_to_size(0, level) * 0.01 * dir;

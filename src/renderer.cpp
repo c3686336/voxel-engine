@@ -357,6 +357,8 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     glUniform3fv(5, 1, glm::value_ptr(x_basis));
     glUniform3fv(4, 1, glm::value_ptr(y_basis));
 
+    ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
+    glUniform1f(6, bias_amt);
     
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
