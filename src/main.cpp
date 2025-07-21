@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
     bool grabbed = false;
     auto prev_escape_state = GLFW_RELEASE;
 
-    float speed = 1.0f;
-    float sensitivity = 0.7f;
+    float speed = 3.0f;
+    float sensitivity = 4.0f;
 
     float yaw = 0.0f;
     float pitch = 0.0f;
@@ -54,6 +54,9 @@ int main(int argc, char** argv) {
             double new_time = glfwGetTime();
             float dt = -timer + new_time;
             timer = new_time;
+
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
 
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
                 camera.move(speed * dt * camera.forward());
@@ -98,9 +101,6 @@ int main(int argc, char** argv) {
                 double x, y;
                 glfwGetCursorPos(window, &x, &y);
 
-                int width, height;
-                glfwGetWindowSize(window, &width, &height);
-
                 float scaled_x = x / (float)width * sensitivity;
                 float scaled_y = y / (float)height * sensitivity;
 
@@ -113,6 +113,7 @@ int main(int argc, char** argv) {
             prev_escape_state = glfwGetKey(window, GLFW_KEY_ESCAPE);
 
             camera.set_dir(pitch, yaw);
+            camera.set_aspect((float)width/(float)height);
         });
     }
 

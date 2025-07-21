@@ -52,6 +52,8 @@ private:
 
     Camera camera;
 
+    float bias_amt = 0.00044f;
+
     bool has_value;
 };
 

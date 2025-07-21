@@ -8,6 +8,7 @@ layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
 layout(location = 5) uniform vec3 camera_right;
 layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
 
 struct Node {
     vec4 color;
@@ -36,12 +37,18 @@ layout(std430, binding = 2) buffer two {
 out vec4 frag_color;
 
 vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
+    // precise vec3 lb = min(cor1, cor2);
+    // precise vec3 rt = max(cor1, cor2);
+    
     // https://tavianator.com/2015/ray_box_nan.html
     precise vec3 t1 = (cor1 - pos) * dir_inv;
     precise vec3 t2 = (cor2 - pos) * dir_inv;
 
     precise float tmin = min(min(t1.x, t2.x), INF);
     precise float tmax = max(max(t1.x, t2.x), -INF);
+    
+    // precise float tmin = min(t1.x, t2.x);
+    // precise float tmax = max(t1.x, t2.x);
 
     // Eliminates NaN problem
     tmin = max(tmin, min(min(t1.y, t2.y), tmax));
@@ -71,6 +78,7 @@ uint bitmask_to_index(uvec3 bitmask, uint level) {
 }
 
 QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
+
     uvec3 bitmask = pos_to_bitmask(pos, max_level);
 
     uint n_idx = svodag_index;
@@ -93,25 +101,26 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
 vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     uint level = metadata[index].max_level; // Need to set this through uniform or ssbo content
     uint svodag_index = metadata[index].at_index;
-    vec3 dir_inv = vec3(1.0) / dir;
+    precise vec3 dir_inv = vec3(1.0) / dir;
 
     vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
     minmax.x = max(0.0, minmax.x);
 
-    bool intersected = minmax.y >= minmax.x;
+    bool intersected = minmax.y > minmax.x;
+    // intersected = true;
 
     if (!intersected) {
         return vec4(1.0, 0.0, 0.0, 1.0);
     }
+    // return vec4(minmax.x, minmax.x, 0.0, 1.0);
 
-    vec3 cur_pos = origin + dir * minmax.x;
+    vec3 bias = level_to_size(0, level) * bias_amt * dir;
+    vec3 cur_pos = origin + dir * minmax.x + bias;
     uint iters = 0;
 
-    vec3 bias = level_to_size(0, level) * 0.01 * dir;
-
     do {
-        vec3 biased = cur_pos + bias;
-        QueryResult result = query(svodag_index, biased, level);
+        // vec3 biased = cur_pos + bias;
+        QueryResult result = query(svodag_index, cur_pos, level);
 
         if (result.node.color.a > 0.0) {
             return result.node.color;
@@ -120,7 +129,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         float size = level_to_size(result.at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
-                biased,
+                cur_pos,
                 result.at_level,
                 level
             );
@@ -130,11 +139,11 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         minmax = slab_test(
                 cur_vox_start,
                 cur_vox_end,
-                biased,
+                cur_pos,
                 dir_inv
             );
 
-        cur_pos = biased + minmax.y * dir;
+        cur_pos += minmax.y * dir + bias;
 
         iters++;
     }
