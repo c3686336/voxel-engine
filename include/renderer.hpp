@@ -35,7 +35,7 @@ public:
 	Renderer(Renderer&& other) noexcept;
 	Renderer& operator=(Renderer&& other) noexcept;
 
-	bool main_loop(const std::function<void ()> f);
+	bool main_loop(const std::function<void (GLFWwindow*)> f);
     GLFWwindow* get_window() const;
 
     inline void set_camera_pos(glm::vec3 new_pos) {
