@@ -22,7 +22,7 @@ struct SvodagMetaData {
 
 struct QueryResult {
     uint at_level; // 0: At deepest level, MLEVEL: at root, because the level is in the unit of branches
-    vec4 color;
+    Node node;
 };
 
 layout(std430, binding = 3) buffer one {
@@ -79,7 +79,7 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
         uint new_idx = nodes[n_idx].addr[index];
 
         if (new_idx == 0) {
-            return QueryResult(i, nodes[n_idx].color);
+            return QueryResult(i, nodes[n_idx]);
         }
         // We are guaranteed to get new_idx == 0 when i == 0
 
@@ -87,13 +87,13 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
     }
 
     // Just to be safe
-    return QueryResult(0, nodes[n_idx].color);
+    return QueryResult(0, nodes[n_idx]);
 }
 
 vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     uint level = metadata[index].max_level; // Need to set this through uniform or ssbo content
     uint svodag_index = metadata[index].at_index;
-    vec3 dir_inv = vec3(1.0) / dir;
+    precise vec3 dir_inv = vec3(1.0) / dir;
 
     vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
     minmax.x = max(0.0, minmax.x);
@@ -113,8 +113,8 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         vec3 biased = cur_pos + bias;
         QueryResult result = query(svodag_index, biased, level);
 
-        if (result.color.a > 0.0) {
-            return result.color;
+        if (result.node.color.a > 0.0) {
+            return result.node.color;
         }
 
         float size = level_to_size(result.at_level, level);
