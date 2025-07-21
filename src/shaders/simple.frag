@@ -99,21 +99,18 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
     vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
     minmax.x = max(0.0, minmax.x);
 
-    bool intersected = minmax.y >= minmax.x;
+    bool intersected = minmax.y > minmax.x;
 
     if (!intersected) {
         return vec4(1.0, 0.0, 0.0, 1.0);
     }
 
-    vec3 cur_pos = origin + dir * minmax.x;
     vec3 bias = level_to_size(0, level) * bias_amt * dir;
+    vec3 cur_pos = origin + dir * minmax.x + bias;
     uint iters = 0;
 
-    vec3 bias = level_to_size(0, level) * 0.01 * dir;
-
     do {
-        vec3 biased = cur_pos + bias;
-        QueryResult result = query(svodag_index, biased, level);
+        QueryResult result = query(svodag_index, cur_pos, level);
 
         if (result.node.color.a > 0.0) {
             return result.node.color;
@@ -122,7 +119,7 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         float size = level_to_size(result.at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
-                biased,
+                cur_pos,
                 result.at_level,
                 level
             );
@@ -132,11 +129,11 @@ vec4 raymarch(uint index, vec3 origin, vec3 dir) {
         minmax = slab_test(
                 cur_vox_start,
                 cur_vox_end,
-                biased,
+                cur_pos,
                 dir_inv
             );
 
-        cur_pos = biased + minmax.y * dir;
+        cur_pos += minmax.y * dir + bias;
 
         iters++;
     }
