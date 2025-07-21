@@ -33,7 +33,7 @@ public:
         return *this;
     }
 
-    ~Ssbo() noexcept { gl::glDeleteBuffers(1, &ssbo); }
+    ~Ssbo() noexcept { if (has_buffer) gl::glDeleteBuffers(1, &ssbo); }
 
     void bind(unsigned int binding_index) {
         if (has_buffer)
