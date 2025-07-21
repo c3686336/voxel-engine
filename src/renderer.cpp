@@ -222,6 +222,7 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
     ibo = create_ibo();
     vao = create_vao();
     bind_buffers(vao, vbo, ibo);
+	program = load_shaders(vs_path, fs_path);
 
     SPDLOG_INFO("Creating matid list");
     materials.initialize();
@@ -264,15 +265,20 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 
     SPDLOG_INFO("Creating SSBO");
 
-    // SPDLOG_INFO(std::format("{}", data));
+    svodag_ssbo.initialize();
+    for (auto& elem : data) {
+        svodag_ssbo.register_data(elem);
+    }
+    svodag_ssbo.update_ssbo();
 
-	program = load_shaders(vs_path, fs_path);
-
-    svodag_ssbo = Ssbo<SerializedNode>(data);
     std::vector<SvodagMetaData> metadata = {
         {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), (unsigned int)1}
     };
-    metadata_ssbo = Ssbo<SvodagMetaData>(metadata);
+    metadata_ssbo.initialize();
+    for (auto& elem : metadata) {
+        metadata_ssbo.register_data(elem);
+    }
+    metadata_ssbo.update_ssbo();
 
     program = load_shaders(vs_path, fs_path);
     IMGUI_CHECKVERSION();

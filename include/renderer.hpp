@@ -49,8 +49,8 @@ private:
 	gl::GLuint vao;
 	gl::GLuint program;
 
-    Ssbo<SerializedNode> svodag_ssbo;
-    Ssbo<SvodagMetaData> metadata_ssbo;
+    SsboList<SerializedNode, 65536> svodag_ssbo;
+    SsboList<SvodagMetaData, 1024> metadata_ssbo;
     MaterialList<SimpleMaterial, 1024> materials;
 
     Camera camera;
