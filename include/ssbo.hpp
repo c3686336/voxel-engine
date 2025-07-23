@@ -150,6 +150,10 @@ public:
         gl::glBindBufferBase(gl::GL_SHADER_STORAGE_BUFFER, binding_index, ssbo);
     }
 
+    size_t get_current_index() noexcept {
+        return n_used;
+    }
+
 private:
     std::array<T, L> buffer;
     size_t n_used = 0;

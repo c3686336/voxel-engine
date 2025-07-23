@@ -19,8 +19,8 @@
 #include <imgui_impl_opengl3.h>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <filesystem>
 #include <format>
@@ -214,71 +214,24 @@ GLuint load_shaders(
     return program;
 }
 
-Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path) : camera(), has_value(true) {
-	window = create_window(640, 480);
-	initialize_gl(640, 480);
+Renderer::Renderer(
+    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
+)
+    : camera(), has_value(true) {
+    window = create_window(640, 480);
+    initialize_gl(640, 480);
 
     vbo = create_vbo();
     ibo = create_ibo();
     vao = create_vao();
     bind_buffers(vao, vbo, ibo);
-	program = load_shaders(vs_path, fs_path);
-
-    SPDLOG_INFO("Creating matid list");
-    materials.initialize();
-    MatID_t white = materials.register_material({
-        glm::vec4(1.0, 1.0, 1.0, 0.0) 
-    }).value(); // Just crash, unlikely
-    materials.update_ssbo();
-
-    // TODO: Separate this out
-    SPDLOG_INFO("Creating SVODAG");
-
-    size_t depth = 3;
-    SvoDag svodag{depth}; // width = 256;
-
-    long limit = 1 << depth;
-    for (long x = 0; x < limit; x++) {
-        for (long y = 0; y < limit; y++) {
-            for (long z = 0; z < limit; z++) {
-                long length = (x - (limit >> 1)) * (x - (limit >> 1)) +
-                              (y - (limit >> 1)) * (y - (limit >> 1)) +
-                              (z - (limit >> 1)) * (z - (limit >> 1));
-                if ((limit >> 1) * (limit >> 2) < length &&
-                    length <= (limit >> 1) * (limit >> 1))
-                // if (x == 2)
-                {
-                    svodag.insert(
-                        x, y, z,
-                        white
-                    );
-                }
-            }
-        }
-    }
-    SPDLOG_INFO("Created SVODAG");
-
-    SPDLOG_INFO("Serializing SVODAG");
-    std::vector<SerializedNode> data = svodag.serialize();
-
-    SPDLOG_INFO("Serialized SVODAG");
+    program = load_shaders(vs_path, fs_path);
 
     SPDLOG_INFO("Creating SSBO");
-
     svodag_ssbo.initialize();
-    for (auto& elem : data) {
-        svodag_ssbo.register_data(elem);
-    }
-    svodag_ssbo.update_ssbo();
-
-    std::vector<SvodagMetaData> metadata = {
-        {glm::identity<glm::mat4>(), (unsigned int)(svodag.get_level()), (unsigned int)1}
-    };
     metadata_ssbo.initialize();
-    for (auto& elem : metadata) {
-        metadata_ssbo.register_data(elem);
-    }
-    metadata_ssbo.update_ssbo();
+    materials.initialize();
+    svodag_ssbo.register_data(SerializedNode{});
 
     program = load_shaders(vs_path, fs_path);
     IMGUI_CHECKVERSION();
@@ -291,16 +244,16 @@ Renderer::Renderer(const std::filesystem::path& vs_path, const std::filesystem::
 }
 
 Renderer::Renderer(Renderer&& other) noexcept {
-	window = other.window;
-	vbo = other.vbo;
-	ibo = other.vbo;
-	vao = other.vao;
-	program = other.program;
+    window = other.window;
+    vbo = other.vbo;
+    ibo = other.vbo;
+    vao = other.vao;
+    program = other.program;
     metadata_ssbo = std::move(other.metadata_ssbo);
     svodag_ssbo = std::move(other.svodag_ssbo);
 
     camera = other.camera;
-    
+
     has_value = other.has_value;
     other.has_value = false;
 }
@@ -324,17 +277,18 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
 }
 
 Renderer::~Renderer() {
-    if (!has_value) return;
+    if (!has_value)
+        return;
 
     SPDLOG_INFO("Destroying Renderer");
-    
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &vbo);
-	glDeleteProgram(program);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteProgram(program);
 
     glfwTerminate();
 }
@@ -349,7 +303,7 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-	f(window, camera);
+    f(window, camera);
 
     glUseProgram(program);
     glBindVertexArray(vao);
@@ -364,24 +318,28 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
 
     glUniform3fv(1, 1, glm::value_ptr(pos));
     glUniform3fv(2, 1, glm::value_ptr(dir));
-    
+
     glUniform3fv(5, 1, glm::value_ptr(x_basis));
     glUniform3fv(4, 1, glm::value_ptr(y_basis));
 
+    glUniform1ui(8, metadata_ssbo.get_current_index());
+
     ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
-    
+
+    uint32_t model_select_min = 0;
+    uint32_t model_select_max = metadata_ssbo.get_current_index() - 1;
+    ImGui::SliderScalar("Model No.", ImGuiDataType_U32, &model_select, &model_select_min, &model_select_max, "%u");
+    glUniform1ui(7, model_select);
+
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);
-	
-	return glfwWindowShouldClose(window);
+
+    return glfwWindowShouldClose(window);
 }
 
-
-GLFWwindow* Renderer::get_window() const {
-    return window;
-}
+GLFWwindow* Renderer::get_window() const { return window; }

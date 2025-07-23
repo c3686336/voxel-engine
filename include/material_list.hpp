@@ -81,11 +81,11 @@ public:
         return *this;
     }
 
-    std::optional<MatID_t> register_material(const T&& material) noexcept {
+    std::optional<MatID_t> register_material(const T& material) noexcept {
         if (n_materials >= L)
             return std::nullopt;
 
-        materials[n_materials] = std::move(material);
+        materials[n_materials] = material;
 
         n_materials++;
 

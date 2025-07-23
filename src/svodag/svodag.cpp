@@ -185,11 +185,10 @@ void SvoDag::insert(
 const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     // TODO: This probably violates SRP
 
-    Addr_t cnt = 0; // Because the root node won't be included;
+    Addr_t cnt = 0;
     std::unordered_map<std::shared_ptr<SvoNode>, Addr_t> map;
     std::queue<std::shared_ptr<SvoNode>> bfs_queue;
 
-    cnt++;
     map[root] = cnt;
     bfs_queue.push(root);
 
@@ -213,16 +212,14 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
 
     SPDLOG_INFO(cnt);
 
-    buffer[1] = SerializedNode{root->get_mat_id(), std::array<Addr_t, 8>{0}};
+    buffer[0] = SerializedNode{root->get_mat_id(), std::array<Addr_t, 8>{0}};
     for (int i = 0; i < 8; i++) {
         if (root->get_children()[i]) {
-            buffer[1].addr[i] = map[root->get_children()[i]];
+            buffer[0].addr[i] = map[root->get_children()[i]];
         }
     }
 
     for (auto i = map.begin(); i != map.end(); i++) {
-        // SPDLOG_INFO(std::format("{}", i->second));
-
         buffer[i->second] =
             SerializedNode{i->first->get_mat_id(), std::array<Addr_t, 8>{0}};
 

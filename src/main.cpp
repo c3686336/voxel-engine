@@ -34,6 +34,42 @@ int main(int argc, char** argv) {
         std::filesystem::path("simple.frag")
     );
 
+    SPDLOG_INFO("Creating matid list");
+    MatID_t white = renderer.register_material({
+        glm::vec4(1.0, 1.0, 1.0, 1.0) 
+    });
+
+    SPDLOG_INFO("Creating SVODAG");
+
+    size_t depth = 3;
+    SvoDag svodag{depth}; // width = 256;
+
+    long limit = 1 << depth;
+    for (long x = 0; x < limit; x++) {
+        for (long y = 0; y < limit; y++) {
+            for (long z = 0; z < limit; z++) {
+                long length = (x - (limit >> 1)) * (x - (limit >> 1)) +
+                              (y - (limit >> 1)) * (y - (limit >> 1)) +
+                              (z - (limit >> 1)) * (z - (limit >> 1));
+                if ((limit >> 1) * (limit >> 2) < length &&
+                     length <= (limit >> 1) * (limit >> 1))
+                // if (x == 2)
+                {
+                    svodag.insert(
+                        x, y, z,
+                        white
+                    );
+                }
+            }
+        }
+    }
+    SPDLOG_INFO("Created SVODAG");
+
+    std::vector<SerializedNode> data = svodag.serialize();
+    SPDLOG_INFO("Serialized SVODAG");
+    renderer.register_model(data, svodag.get_level(), glm::translate(glm::identity<mat4>(), vec3(0.0, 0.0, 0.0)));
+    auto ind2 = renderer.register_model(data, svodag.get_level(), glm::translate(glm::identity<mat4>(), vec3(0.0, 1.5, 0.0)));
+
     bool grabbed = false;
     auto prev_escape_state = GLFW_RELEASE;
 
@@ -50,7 +86,7 @@ int main(int argc, char** argv) {
                                               Camera& camera) {
             ImGui::SliderFloat("Movement Speed", &speed, 0.0f, 10.0f);
             ImGui::SliderFloat("Mouse Sensitivity", &sensitivity, 0.0f, 4.0f);
-            
+
             double new_time = glfwGetTime();
             float dt = -timer + new_time;
             timer = new_time;
