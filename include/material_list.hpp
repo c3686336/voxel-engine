@@ -1,8 +1,6 @@
 #ifndef MATERIAL_LIST_HPP
 #define MATERIAL_LIST_HPP
 
-#include "ssbo.hpp"
-
 #include <cstdint>
 #include <glbinding/gl/gl.h>
 #include <glm/glm.hpp>

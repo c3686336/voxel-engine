@@ -4,7 +4,6 @@
 #include "buffer.hpp"
 #include "common.hpp"
 #include "vertex.hpp"
-#include "ssbo.hpp"
 #include "svodag.hpp"
 #include "camera.hpp"
 #include "material.hpp"
