@@ -155,33 +155,8 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 dir, vec3 
     return false;
 }
 
-bool raymarch(uint index, vec3 origin, vec3 dir, out vec3 hit_pos, out QueryResult hit_query, out vec3 normal) {
-    uint level = metadata[index].max_level;
-    uint svodag_index = metadata[index].at_index;
-    precise vec3 dir_inv = vec3(1.0) / dir;
-
-    vec2 minmax = slab_test(vec3(0.0), vec3(1.0), origin, dir_inv);
-    minmax.x = max(0.0, minmax.x);
-
-    bool intersected = minmax.y > minmax.x;
-
-    if (!intersected) {
-        return false;
-    }
-
-    vec3 bias = level_to_size(0, level) * bias_amt * dir;
-    vec3 cur_pos = origin + dir * minmax.x + bias;
-
-    return raymarch_model(svodag_index, level, cur_pos, dir, dir_inv, bias, hit_pos, hit_query, normal);
-
-    // if (iters >= 100) {
-    //     // return vec4(0.0, 0.0, 1.0, 1.0);
-    // }
-}
-
 bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, out vec3 normal, out uint hit_model_index) {
     float hit_dist_squared = INF;
-
     for (int i = 0; i < n_models; i++) {
         uint level = metadata[i].max_level;
         uint svodag_index = metadata[i].at_index;
@@ -260,6 +235,7 @@ void main() {
         );
 
     if (result) {
+        
         // Cast a shadow ray
         vec4 shadow_hit_pos;
         QueryResult shadow_hit_query;
