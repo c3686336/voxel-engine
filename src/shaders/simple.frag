@@ -120,6 +120,7 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 dir, vec3 
                     result.at_level,
                     level
                 );
+
             float size = level_to_size(result.at_level, level);
             vec3 maxpos = minpos + size;
             // Scale cur_pos to -1, -1, -1 ~ 1, 1, 1

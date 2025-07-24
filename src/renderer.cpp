@@ -228,10 +228,11 @@ Renderer::Renderer(
     program = load_shaders(vs_path, fs_path);
 
     SPDLOG_INFO("Creating SSBO");
-    svodag_ssbo.initialize();
-    metadata_ssbo.initialize();
-    materials.initialize();
-    svodag_ssbo.register_data(SerializedNode{});
+    svodag_ssbo.allocate();
+    metadata_ssbo.allocate();
+    materials.allocate();
+    materials.push_back(Material{});
+    svodag_ssbo.push_back(SerializedNode{});
 
     program = load_shaders(vs_path, fs_path);
     IMGUI_CHECKVERSION();
@@ -305,6 +306,8 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
 
     f(window, camera);
 
+    metadata_ssbo.upload();
+
     glUseProgram(program);
     glBindVertexArray(vao);
     svodag_ssbo.bind(3);
@@ -322,7 +325,7 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     glUniform3fv(5, 1, glm::value_ptr(x_basis));
     glUniform3fv(4, 1, glm::value_ptr(y_basis));
 
-    glUniform1ui(8, metadata_ssbo.get_current_index());
+    glUniform1ui(8, metadata_ssbo.data.size());
 
     ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
@@ -338,6 +341,8 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);
+
+    metadata_ssbo.lock();
 
     return glfwWindowShouldClose(window);
 }

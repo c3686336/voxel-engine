@@ -1,6 +1,7 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#include "buffer.hpp"
 #include "common.hpp"
 #include "vertex.hpp"
 #include "ssbo.hpp"
@@ -47,27 +48,26 @@ public:
     GLFWwindow* get_window() const;
 
     inline uint32_t register_model(std::vector<SerializedNode> model, unsigned int max_level, glm::mat4 model_mat /*Model space -> World space*/) {
-        metadata_ssbo.register_data(
+        metadata_ssbo.data.push_back(
             {
                 glm::inverse(model_mat), model_mat /*Just use 3x3 submatrix*/,
                 glm::transpose(glm::inverse(model_mat)), max_level,
-                (unsigned int)svodag_ssbo.get_current_index()
+                (unsigned int)svodag_ssbo.size()
             }
         );
 
         for (auto& elem : model) {
-            svodag_ssbo.register_data(elem);
+            svodag_ssbo.push_back(elem);
         }
 
-        svodag_ssbo.update_ssbo();
-        metadata_ssbo.update_ssbo();
+        svodag_ssbo.upload();
 
-        return metadata_ssbo.get_current_index() - 1;
+        return metadata_ssbo.data.size() - 1;
     }
 
     inline MatID_t register_material(const Material& material) {
-        MatID_t matid = materials.register_material(material).value();
-        materials.update_ssbo();
+        MatID_t matid = materials.push_back(material);
+        materials.upload();
 
         return matid;
     }
@@ -80,9 +80,9 @@ private:
 	gl::GLuint vao;
 	gl::GLuint program;
 
-    SsboList<SerializedNode, 120000> svodag_ssbo;
-    SsboList<SvodagMetaData, 1024> metadata_ssbo;
-    MaterialList<Material, 1024> materials;
+    AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER, 120000> svodag_ssbo;
+    VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER, 1024> metadata_ssbo;
+    AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER, 1024> materials;
 
     Camera camera;
 
