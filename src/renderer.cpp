@@ -330,10 +330,6 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
 
-    uint32_t model_select_min = 0;
-    uint32_t model_select_max = metadata_ssbo.get_current_index() - 1;
-    ImGui::SliderScalar("Model No.", ImGuiDataType_U32, &model_select, &model_select_min, &model_select_max, "%u");
-    glUniform1ui(7, model_select);
 
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 

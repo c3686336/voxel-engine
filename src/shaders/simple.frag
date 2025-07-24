@@ -11,7 +11,6 @@ layout(location = 2) uniform vec3 camera_dir;
 layout(location = 5) uniform vec3 camera_right;
 layout(location = 4) uniform vec3 camera_up;
 layout(location = 6) uniform float bias_amt;
-layout(location = 7) uniform uint model_select;
 layout(location = 8) uniform uint n_models;
 
 struct Node {
