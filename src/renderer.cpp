@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 #include "formatter.hpp"
-#include "ssbo.hpp"
 #include "svodag.hpp"
 #include "vertex.hpp"
 
@@ -303,6 +302,7 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGui::Begin("asdf");
 
     f(window, camera);
 
@@ -330,6 +330,7 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
     ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
 
+    ImGui::End();
 
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
