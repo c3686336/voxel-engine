@@ -27,34 +27,6 @@ SvoNode::SvoNode() noexcept : SvoNode(0){};
 SvoNode::SvoNode(MatID_t mat_id) noexcept
     : mat_id(mat_id), children(){};
 
-SvoNode::SvoNode(const SvoNode& other) noexcept : mat_id(other.mat_id) {
-    for (int i = 0; i < 8; i++) {
-        // Refcount is decremented
-        children[i] = std::make_shared<SvoNode>(*other.children[i]);
-    }
-}
-
-SvoNode::SvoNode(SvoNode&& other) noexcept
-    : mat_id(other.mat_id), children(std::move(other.children)) {
-    other.children =
-        std::array<std::shared_ptr<SvoNode>, 8>(); // So that the dtor is no-op.
-};
-
-SvoNode& SvoNode::operator=(SvoNode other) noexcept {
-    swap(*this, other);
-
-    return *this;
-}
-
-SvoNode& SvoNode::operator=(SvoNode&& other) noexcept {
-    mat_id = std::move(other.mat_id);
-    children = std::move(other.children);
-    other.children =
-        std::array<std::shared_ptr<SvoNode>, 8>(); // So that the dtor is no-op.
-
-    return *this;
-}
-
 void SvoNode::insert(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
     const size_t level, const MatID_t new_mat_id
@@ -210,8 +182,6 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     // Now, cnt is the number of nodes
     std::vector<SerializedNode> buffer(cnt + 1, SerializedNode{});
 
-    SPDLOG_INFO(cnt);
-
     buffer[0] = SerializedNode{root->get_mat_id(), std::array<Addr_t, 8>{0}};
     for (int i = 0; i < 8; i++) {
         if (root->get_children()[i]) {
@@ -272,6 +242,8 @@ const QueryResult SvoDag::query(const glm::vec3 pos) const noexcept {
 }
 
 void SvoDag::dedup() noexcept {
+    root->solidify();
+    
     for (int i=level-1;i>=0;i--) {
         std::unordered_map<SvoNode, std::shared_ptr<SvoNode>> map{};
         root->dedup(map, i);
@@ -280,60 +252,61 @@ void SvoDag::dedup() noexcept {
     root->solidify();
 }
 
-void SvoNode::dedup(std::unordered_map<SvoNode, std::shared_ptr<SvoNode>>& map, size_t target_depth /*Opposite of level*/) {
+void SvoNode::dedup(
+    std::unordered_map<SvoNode, std::shared_ptr<SvoNode>>& map,
+    size_t target_depth /*Opposite of level*/
+) {
     if (target_depth == 0) {
-        return; // This means that the tree/dag only has a root node
-    }
-    
-    if (target_depth == 1) {
-        for (int i=0;i<8;i++) {
+        for (int i = 0; i < 8; i++) {
             if (!children[i]) {
                 break; // The node is terminal; No need to do anything else
             }
-            
+
             if (map.contains(*children[i])) {
                 children[i] = map[*children[i]];
             } else {
-                map[*children[i]] = children[i];
+                map.insert({*children[i], children[i]});
             }
         }
 
         return;
     }
 
-    for (int i=0;i<8;i++) {
+    for (int i = 0; i < 8; i++) {
         if (children[i]) {
-            children[i]->dedup(map, target_depth-1);
+            children[i]->dedup(map, target_depth - 1);
         }
     }
 }
 
 void SvoNode::solidify() {
-    for (int i=0;i<8;i++) {
-        // If the child has the same eight children, promote the grandchild;
-
-        if (!children[i]) {
-            break; // This node is terminal
+    for (auto& child : children) {
+        if (!child) {
+            return;
         }
 
-        bool same = true;
-        std::shared_ptr<SvoNode> reference = children[i]->children[0];
-        // If the child is terminal, skip.
-        if (!reference) {
-            continue;
-        }
-        
-        for (int j=0;j<8;j++) {
-            same = same && children[i]->children[j] == reference;
-        }
-
-        if (same) {
-            children[i] = reference;
-        }
-
-        // Regardless,
-        children[i]->solidify(); // We've already check non-nullness of this node.
+        child->solidify();
     }
+    
+    // If all children are terminal and has the same mat_id, promote the mat_id to this node and make this node terminal.
+
+    bool all = true;
+    std::shared_ptr<SvoNode> reference = children[0];
+
+    for (auto& grandchild : reference->children) {
+        if (grandchild) {
+            return; // Has grandchildren; No point in solidification
+        }
+    }
+    
+    for (auto& child : children) {
+        if (child != reference) {
+            return;
+        }
+    }
+
+    mat_id = reference->mat_id;
+    children.fill(nullptr);
 }
 
 size_t std::hash<SvoNode>::operator()(const SvoNode& node) const noexcept {

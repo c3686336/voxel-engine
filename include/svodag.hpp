@@ -28,7 +28,7 @@ typedef uint32_t Addr_t; // Have to fix the paddings before changing this type
 // vec2: no padding, alignment = size
 // vec3, vec4: pad to match the size of vec4, alignment = size + padding
 //
-typedef struct alignas(4) {
+typedef struct alignas(4) SerializedNode {
     alignas(sizeof(MatID_t)) MatID_t mat_id; // 4 bytes
     // Read as single vec4, overall size 16B
 
@@ -36,6 +36,8 @@ typedef struct alignas(4) {
     // One is read as a single uint, overall size 4B;
 
     // Total size = 48B, needs to be padded to 48B = 16B * 3
+
+    bool operator==(const SerializedNode& other) const = default;
 } SerializedNode;
 // Good enough for now
 
@@ -74,10 +76,6 @@ class SvoNode {
 public:
     SvoNode() noexcept;
     SvoNode(MatID_t mat_id) noexcept;
-    SvoNode(const SvoNode& other) noexcept;
-    SvoNode(SvoNode&& other) noexcept;
-    SvoNode& operator=(SvoNode other) noexcept;
-    SvoNode& operator=(SvoNode&& other) noexcept;
 
     inline bool operator==(const SvoNode& other) const = default;
 
