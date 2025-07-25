@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <utility>
 
 typedef uint32_t Addr_t; // Have to fix the paddings before changing this type
 
@@ -63,6 +64,11 @@ template <typename CharT> struct std::formatter<SerializedNode, CharT> {
     }
 };
 
+template<>
+struct std::hash<SvoNode> {
+    std::size_t operator()(SvoNode const& node) const noexcept;
+};
+
 // Definitions
 class SvoNode {
 public:
@@ -72,6 +78,8 @@ public:
     SvoNode(SvoNode&& other) noexcept;
     SvoNode& operator=(SvoNode other) noexcept;
     SvoNode& operator=(SvoNode&& other) noexcept;
+
+    inline bool operator==(const SvoNode& other) const = default;
 
     void insert(
         const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
@@ -87,7 +95,12 @@ public:
         const size_t level
     ) const noexcept;
 
+    void dedup(std::unordered_map<SvoNode, std::shared_ptr<SvoNode>>& map, size_t target_depth /*Opposite of level*/);
+    void solidify();
+
     friend void swap(SvoNode& first, SvoNode& second);
+
+    friend size_t std::hash<SvoNode>::operator()(const SvoNode& node) const noexcept;
 
 private:
     MatID_t mat_id;
@@ -116,6 +129,8 @@ public:
 
     const std::vector<SerializedNode> serialize() const noexcept;
     inline size_t get_level() const noexcept { return level; }
+
+    void dedup() noexcept;
 
 private:
     std::shared_ptr<SvoNode> root;

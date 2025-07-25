@@ -270,3 +270,79 @@ const QueryResult SvoDag::query(const glm::vec3 pos) const noexcept {
 
     return result.value_or({root, level});
 }
+
+void SvoDag::dedup() noexcept {
+    for (int i=level-1;i>=0;i--) {
+        std::unordered_map<SvoNode, std::shared_ptr<SvoNode>> map{};
+        root->dedup(map, i);
+    }
+
+    root->solidify();
+}
+
+void SvoNode::dedup(std::unordered_map<SvoNode, std::shared_ptr<SvoNode>>& map, size_t target_depth /*Opposite of level*/) {
+    if (target_depth == 0) {
+        return; // This means that the tree/dag only has a root node
+    }
+    
+    if (target_depth == 1) {
+        for (int i=0;i<8;i++) {
+            if (!children[i]) {
+                break; // The node is terminal; No need to do anything else
+            }
+            
+            if (map.contains(*children[i])) {
+                children[i] = map[*children[i]];
+            } else {
+                map[*children[i]] = children[i];
+            }
+        }
+
+        return;
+    }
+
+    for (int i=0;i<8;i++) {
+        if (children[i]) {
+            children[i]->dedup(map, target_depth-1);
+        }
+    }
+}
+
+void SvoNode::solidify() {
+    for (int i=0;i<8;i++) {
+        // If the child has the same eight children, promote the grandchild;
+
+        if (!children[i]) {
+            break; // This node is terminal
+        }
+
+        bool same = true;
+        std::shared_ptr<SvoNode> reference = children[i]->children[0];
+        // If the child is terminal, skip.
+        if (!reference) {
+            continue;
+        }
+        
+        for (int j=0;j<8;j++) {
+            same = same && children[i]->children[j] == reference;
+        }
+
+        if (same) {
+            children[i] = reference;
+        }
+
+        // Regardless,
+        children[i]->solidify(); // We've already check non-nullness of this node.
+    }
+}
+
+size_t std::hash<SvoNode>::operator()(const SvoNode& node) const noexcept {
+    size_t h1 = std::hash<MatID_t>{}(node.mat_id);
+    size_t h2 = std::hash<std::shared_ptr<SvoNode>>{}(node.children[0]);
+
+    for (int i=1; i<8; i++) {
+        h2 = h2 ^ (std::hash<std::shared_ptr<SvoNode>>{}(node.children[i]) << 1);
+    }
+
+    return h1 ^ (h2 << 1);
+}
