@@ -20,6 +20,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <entt/entt.hpp>
+
 #include <format>
 #include <string>
 #include <filesystem>
@@ -43,25 +45,19 @@ public:
 	Renderer(Renderer&& other) noexcept;
 	Renderer& operator=(Renderer&& other) noexcept;
 
-	bool main_loop(const std::function<void (GLFWwindow*, Camera&)> f);
+	bool main_loop(entt::registry& registry, const std::function<void (GLFWwindow*, Camera&)> f);
     GLFWwindow* get_window() const;
 
-    inline uint32_t register_model(std::vector<SerializedNode> model, unsigned int max_level, glm::mat4 model_mat /*Model space -> World space*/) {
-        metadata_ssbo.data.push_back(
-            {
-                glm::inverse(model_mat), model_mat /*Just use 3x3 submatrix*/,
-                glm::transpose(glm::inverse(model_mat)), max_level,
-                (unsigned int)svodag_ssbo.size()
-            }
-        );
-
+    inline size_t register_model(std::vector<SerializedNode> model, unsigned int max_level) {
+        size_t id = svodag_ssbo.size();
+        
         for (auto& elem : model) {
             svodag_ssbo.push_back(elem);
         }
 
         svodag_ssbo.upload();
 
-        return metadata_ssbo.data.size() - 1;
+        return id;
     }
 
     inline MatID_t register_material(const Material& material) {

@@ -123,7 +123,7 @@ public:
         if (this->owns_buffer) {
             gl::glBindBufferRange(
                 type, binding_index, this->buffer, allocation_size * index,
-                size[index]
+                allocation_size
             );
         }
     }

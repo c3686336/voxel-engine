@@ -4,6 +4,8 @@
 #include "formatter.hpp"
 #include "svodag.hpp"
 #include "vertex.hpp"
+#include "renderable.hpp"
+#include "components.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -293,7 +295,7 @@ Renderer::~Renderer() {
     glfwTerminate();
 }
 
-bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
+bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFWwindow*, Camera&)> f) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -306,6 +308,21 @@ bool Renderer::main_loop(const std::function<void(GLFWwindow*, Camera&)> f) {
 
     f(window, camera);
 
+    metadata_ssbo.data.clear();
+    registry.view<Renderable, Transformable>().each(
+        [&](auto entity, Renderable& renderable, Transformable& transformable) {
+            if (renderable.visible) {
+                metadata_ssbo.data.emplace_back(
+                    transformable.get_inv_transform(),
+                    transformable.get_transform(),
+                    transformable.get_normal_transform(),
+                    renderable.max_level,
+                    renderable.model_id
+                );
+            }
+        }
+    );
+    
     metadata_ssbo.upload();
 
     glUseProgram(program);

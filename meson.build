@@ -23,7 +23,10 @@ stb_dep = stb_subproj.get_variable('stb_dep')
 imgui_subproj = subproject('imgui')
 imgui_dep = imgui_subproj.get_variable('imgui_dep')
 
-deps = [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep, stb_dep, imgui_dep]
+entt_subproj = subproject('entt')
+entt_dep = entt_subproj.get_variable('entt_dep')
+
+deps = [glbinding_dep, glfw_dep, spdlog_dep, glm_dep, catch2_dep, stb_dep, imgui_dep, entt_dep]
 
 inc = include_directories('include')
 subdir('include')
