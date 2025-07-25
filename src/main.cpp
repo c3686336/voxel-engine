@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
 
     SPDLOG_INFO("Creating SVODAG");
 
-    size_t depth = 3;
+    size_t depth = 8;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1 << depth;
@@ -71,7 +71,11 @@ int main(int argc, char** argv) {
     }
     SPDLOG_INFO("Created SVODAG");
 
+    // SPDLOG_INFO("Before: {}", svodag.serialize().size());
+    svodag.dedup();
+
     std::vector<SerializedNode> data = svodag.serialize();
+    SPDLOG_INFO("After: {}", data.size());
 
     SPDLOG_INFO("Serialized SVODAG");
     registry.emplace<Renderable>(
