@@ -103,3 +103,57 @@ TEST_CASE("Svodag query", "[svodag]") {
 
 	svodag.query(glm::vec3(0.0f, 0.0f, 0.0f));
 }
+
+TEST_CASE("Svodag deduplication", "[svodag]") {
+    SvoDag svodag{8};
+
+    MatID_t id = 0;
+    for (size_t x = 0; x < 256; x++) {
+        for (size_t y = 0; y < 256; y++) {
+            for (size_t z = 0; z < 256; z++) {
+                size_t length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
+                                (z - 128) * (z - 128);
+                if (16383 < length && length < 16385) {
+                    svodag.insert(
+                        x, y, z,
+                        id++
+                    );
+                }
+            }
+        }
+    }
+
+    svodag.dedup();
+
+    MatID_t id_comp = 0;
+    for (size_t x = 0; x < 256; x++) {
+        for (size_t y = 0; y < 256; y++) {
+            for (size_t z = 0; z < 256; z++) {
+                size_t length = (x - 128) * (x - 128) + (y - 128) * (y - 128) +
+                                (z - 128) * (z - 128);
+                if (16383 < length && length < 16385) {
+                    REQUIRE(svodag.get(x, y, z) == id_comp++);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("Svodag solidification", "[svodag]") {
+    SvoDag svodag{3};
+
+    for (size_t x = 0; x < 8; x++) {
+        for (size_t y = 0; y < 8; y++) {
+            for (size_t z = 0; z < 8; z++) {
+                svodag.insert(x, y, z, 1);
+            }
+        }
+    }
+
+    svodag.dedup();
+
+    std::vector<SerializedNode> data(svodag.serialize());
+
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0] == SerializedNode{1, {0, 0, 0, 0, 0, 0, 0, 0}});
+}
