@@ -202,7 +202,7 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
 
         vec4 hit_pos_candidate_worldsp = model_mat * vec4(hit_pos_candidate_modelsp, 1.0);
         float hit_dist_squared_candidate = dot(hit_pos_candidate_worldsp - origin, hit_pos_candidate_worldsp - origin);
-        vec3 normal_candidate_worldsp = normal_mat * normal_candidate_modelsp;
+        vec3 normal_candidate_worldsp = normalize(normal_mat * normal_candidate_modelsp);
 
         bool closer = hit_dist_squared_candidate < hit_dist_squared;
 
@@ -235,7 +235,6 @@ void main() {
         );
 
     if (result) {
-        
         // Cast a shadow ray
         vec4 shadow_hit_pos;
         QueryResult shadow_hit_query;
@@ -250,7 +249,7 @@ void main() {
         if (shadow_result) {
             frag_color = vec4(0.0, 0.0, 0.0, 0.0);
         } else {
-            frag_color = vec4(SUN_COLOR * dot(SUN_DIR, first_hit_normal), 1.0);
+            frag_color = vec4(SUN_COLOR * dot(SUN_DIR, first_hit_normal), 1.0) * materials[first_hit_query.node.mat_id].albedo;
         }
     } else {
         frag_color = vec4(0.0, 0.0, 0.0, 0.0);
