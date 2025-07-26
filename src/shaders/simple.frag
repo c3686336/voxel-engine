@@ -5,7 +5,6 @@
 #define SUN_COLOR vec3(1.0, 1.0, 1.0)
 
 layout(location = 0) in vec2 frag_pos;
-
 layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
 layout(location = 5) uniform vec3 camera_right;
@@ -54,21 +53,38 @@ vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     precise vec3 t1 = (cor1 - pos) * dir_inv;
     precise vec3 t2 = (cor2 - pos) * dir_inv;
 
-    precise float tmin = min(min(t1.x, t2.x), INF);
-    precise float tmax = max(max(t1.x, t2.x), -INF);
+    precise vec3 tminvec = min(min(t1, t2), INF);
+    precise vec3 tmaxvec = max(max(t1, t2), -INF);
 
-    // Eliminates NaN problem
-    tmin = max(tmin, min(min(t1.y, t2.y), tmax));
-    tmax = min(tmax, max(max(t1.y, t2.y), tmin));
+    float tmin = max(tminvec.x, max(tminvec.y, tminvec.z));
+    float tmax = min(tmaxvec.x, min(tmaxvec.y, tmaxvec.z));
 
-    tmin = max(tmin, min(min(t1.z, t2.z), tmax));
-    tmax = min(tmax, max(max(t1.z, t2.z), tmin));
+    return vec2(tmin, tmax);
+}
+
+vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv, out bvec3 min_hit_dir, out bvec3 max_hit_dir) {
+    // https://tavianator.com/2015/ray_box_nan.html
+    precise vec3 t1 = (cor1 - pos) * dir_inv;
+    precise vec3 t2 = (cor2 - pos) * dir_inv;
+
+    precise vec3 tminvec = min(min(t1, t2), INF);
+    precise vec3 tmaxvec = max(max(t1, t2), -INF);
+
+    float tmin = max(tminvec.x, max(tminvec.y, tminvec.z));
+    float tmax = min(tmaxvec.x, min(tmaxvec.y, tmaxvec.z));
+
+    min_hit_dir = equal(tminvec, vec3(tmin));
+    max_hit_dir = equal(tmaxvec, vec3(tmax));
 
     return vec2(tmin, tmax);
 }
 
 vec3 snap_pos_down(vec3 pos, uint level, uint max_level) {
     return floor(pos * pow(2.0, float(max_level - level))) * pow(0.5, float(max_level - level));
+}
+
+vec3 snap_pos_up(vec3 pos, uint level, uint max_level) {
+    return ceil(pos * pow(2.0, float(max_level - level))) * pow(0.5, float(max_level - level));
 }
 
 uvec3 pos_to_bitmask(vec3 pos, uint max_level) {
@@ -84,9 +100,7 @@ uint bitmask_to_index(uvec3 bitmask, uint level) {
     return temp.x + temp.y + temp.z;
 }
 
-QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
-    uvec3 bitmask = pos_to_bitmask(pos, max_level);
-
+QueryResult query(uint svodag_index, uvec3 bitmask, uint max_level) {
     uint n_idx = 0;
     for (uint i = max_level; i >= 0; i--) {
         uint index = bitmask_to_index(bitmask, i);
@@ -104,49 +118,49 @@ QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
     return QueryResult(0, nodes[n_idx]);
 }
 
-bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 dir, vec3 dir_inv, vec3 bias, out vec3 hit_pos, out QueryResult hit_query, out vec3 normal) {
+QueryResult query(uint svodag_index, vec3 pos, uint max_level) {
+    return query(svodag_index, pos_to_bitmask(pos, max_level), max_level);
+}
+
+bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3 dir, vec3 dir_inv, bvec3 entry_norm, out vec3 hit_pos, out QueryResult hit_query, out vec3 normal) {
     uint iters = 0;
+
+    bvec3 limiting_axis_min = entry_norm;
+    bvec3 limiting_axis_max = entry_norm;
 
     do {
         QueryResult result = query(svodag_index, cur_pos, level);
 
-        if (result.node.mat_id != 0) {
-            hit_pos = cur_pos - bias;
-            hit_query = result;
-
-            vec3 minpos = snap_pos_down(
-                    cur_pos,
-                    result.at_level,
-                    level
-                );
-
-            float size = level_to_size(result.at_level, level);
-            vec3 maxpos = minpos + size;
-            // Scale cur_pos to -1, -1, -1 ~ 1, 1, 1
-            vec3 vox_pos = (2.0 * (cur_pos - minpos) / size) - 1.0;
-
-            normal = normalize(step(0.999, vox_pos) - step(0.999, -vox_pos));
-            return true;
-        }
-
         float size = level_to_size(result.at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
-                cur_pos,
-                result.at_level,
-                level
+            cur_pos,
+            result.at_level,
+            level
             );
 
         vec3 cur_vox_end = cur_vox_start + vec3(size);
 
+        if (result.node.mat_id != 0) {
+            normal = -sign(dir) * vec3(limiting_axis_max);
+            hit_pos = cur_pos; // - bias;
+            hit_query = result;
+
+            return true;
+        }
+
         vec2 minmax = slab_test(
-                cur_vox_start,
-                cur_vox_end,
-                cur_pos,
-                dir_inv
+            cur_vox_start,
+            cur_vox_end,
+            cur_pos,
+            dir_inv,
+            limiting_axis_min,
+            limiting_axis_max
             );
 
-        cur_pos += minmax.y * dir + bias;
+        minmax = max(vec2(0.0, 0.0), minmax);
+
+        cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
 
         iters++;
     }
@@ -168,7 +182,11 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
         vec4 origin_modelsp = model_inv_mat * origin;
         precise vec3 dir_inv_modelsp = 1.0 / dir_modelsp.xyz; // Avoid divide-by-zero
 
-        vec2 minmax_modelsp = slab_test(vec3(0.0), vec3(1.0), origin_modelsp.xyz, dir_inv_modelsp);
+        bvec3 limiting_axis_min;
+        bvec3 limiting_axis_max;
+        
+        vec2 minmax_modelsp = slab_test(vec3(0.0), vec3(1.0), origin_modelsp.xyz, dir_inv_modelsp, limiting_axis_min, limiting_axis_max);
+        
         minmax_modelsp.x = max(0.0, minmax_modelsp.x);
 
         bool intersected = minmax_modelsp.y > minmax_modelsp.x;
@@ -180,7 +198,7 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
         }
 
         vec4 bias_modelsp = level_to_size(0, level) * bias_amt * dir_modelsp;
-        vec4 cur_pos_modelsp = origin_modelsp + dir_modelsp * minmax_modelsp.x + bias_modelsp;
+        vec4 cur_pos_modelsp = clamp(origin_modelsp + dir_modelsp * minmax_modelsp.x - bias_modelsp, 0.0, 1.0);
 
         vec3 hit_pos_candidate_modelsp;
         QueryResult hit_query_candidate;
@@ -190,9 +208,10 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
                 svodag_index,
                 level,
                 cur_pos_modelsp.xyz,
+                bias_modelsp.xyz,
                 dir_modelsp.xyz,
                 dir_inv_modelsp.xyz,
-                bias_modelsp.xyz,
+                limiting_axis_min,
                 hit_pos_candidate_modelsp,
                 hit_query_candidate,
                 normal_candidate_modelsp
@@ -242,7 +261,7 @@ void main() {
         uint shadow_hit_index;
 
         bool shadow_result = trace(
-            first_hit_pos + bias_amt * vec4(first_hit_normal, 0.0), vec4(SUN_DIR, 0.0),
+            first_hit_pos + 0.001 * vec4(first_hit_normal, 0.0), vec4(SUN_DIR, 0.0),
             shadow_hit_pos, shadow_hit_query, shadow_hit_normal, shadow_hit_index
             );
 
