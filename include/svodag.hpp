@@ -94,7 +94,8 @@ public:
     ) const noexcept;
 
     void dedup(std::unordered_map<SvoNode, std::shared_ptr<SvoNode>>& map, size_t target_depth /*Opposite of level*/);
-    void solidify();
+    void solidify_tree();
+    void solidify_this();
 
     friend void swap(SvoNode& first, SvoNode& second);
 

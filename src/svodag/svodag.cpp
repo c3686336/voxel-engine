@@ -242,14 +242,12 @@ const QueryResult SvoDag::query(const glm::vec3 pos) const noexcept {
 }
 
 void SvoDag::dedup() noexcept {
-    root->solidify();
-    
+    std::unordered_map<SvoNode, std::shared_ptr<SvoNode>> map{};
     for (int i=level-1;i>=0;i--) {
-        std::unordered_map<SvoNode, std::shared_ptr<SvoNode>> map{};
         root->dedup(map, i);
     }
 
-    root->solidify();
+    root->solidify_tree();
 }
 
 void SvoNode::dedup(
@@ -261,6 +259,8 @@ void SvoNode::dedup(
             if (!children[i]) {
                 break; // The node is terminal; No need to do anything else
             }
+
+            children[i]->solidify_this();
 
             if (map.contains(*children[i])) {
                 children[i] = map[*children[i]];
@@ -279,19 +279,27 @@ void SvoNode::dedup(
     }
 }
 
-void SvoNode::solidify() {
+void SvoNode::solidify_tree() {
     for (auto& child : children) {
         if (!child) {
             return;
         }
 
-        child->solidify();
+        child->solidify_tree();
     }
     
+    solidify_this();
+}
+
+void SvoNode::solidify_this() {
     // If all children are terminal and has the same mat_id, promote the mat_id to this node and make this node terminal.
 
     bool all = true;
     std::shared_ptr<SvoNode> reference = children[0];
+
+    if (!reference) {
+        return;
+    }
 
     for (auto& grandchild : reference->children) {
         if (grandchild) {

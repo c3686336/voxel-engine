@@ -154,6 +154,10 @@ TEST_CASE("Svodag solidification", "[svodag]") {
 
     std::vector<SerializedNode> data(svodag.serialize());
 
+    for (auto& node : data) {
+        SPDLOG_INFO(std::format("{}", node));
+    }
+
     REQUIRE(data.size() == 1);
     REQUIRE(data[0] == SerializedNode{1, {0, 0, 0, 0, 0, 0, 0, 0}});
 }
