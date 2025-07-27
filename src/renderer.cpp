@@ -132,6 +132,7 @@ GLFWwindow* create_window(int width, int height) {
 void initialize_gl(int width, int height) {
     glbinding::initialize(glfwGetProcAddress);
     glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_FRAMEBUFFER_SRGB);
     glDebugMessageCallback(message_callback, nullptr);
     glViewport(0, 0, width, height);
     SPDLOG_INFO("Initialized OpenGL");
