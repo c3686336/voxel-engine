@@ -12,6 +12,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <stb_image.h>
+
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
 

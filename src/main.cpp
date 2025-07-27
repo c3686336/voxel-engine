@@ -23,6 +23,9 @@
 
 #include <entt/entt.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <filesystem>
 #include <format>
 #include <string>

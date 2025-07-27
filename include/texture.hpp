@@ -3,8 +3,6 @@
 
 #include <glbinding/gl/gl.h>
 
-#include <stb/stb_image.h>
-
 #include <spdlog/spdlog.h>
 
 #include <span>

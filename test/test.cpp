@@ -12,6 +12,9 @@
 #include "include/svodag.hpp"
 #include "include/formatter.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #define F std::format
 
 // template <class... Args>
