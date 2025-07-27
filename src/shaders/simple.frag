@@ -14,6 +14,7 @@ layout(location = 8) uniform uint n_models;
 layout(location = 9) uniform vec4 m_albedo;
 layout(location = 10) uniform float m_metallicity;
 layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
 
 vec3 base_refl = m_albedo.xyz;
 

@@ -220,7 +220,7 @@ GLuint load_shaders(
 Renderer::Renderer(
     const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
 )
-    : camera(), has_value(true) {
+: camera(), cubemap(), has_value(true) {
     window = create_window(640, 480);
     initialize_gl(640, 480);
 
@@ -332,6 +332,8 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
     materials.bind(6);
+    cubemap.bind(0);
+    glUniform1i(12, 0);
 
     glm::vec3 x_basis = camera.camera_x_basis();
     glm::vec3 y_basis = camera.camera_y_basis();
@@ -372,3 +374,22 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
 }
 
 GLFWwindow* Renderer::get_window() const { return window; }
+
+void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
+    std::array<std::vector<std::byte>, 6> images;
+    std::array<std::span<std::byte>, 6> spans;
+    int width;
+    
+    for (int i=0;i<6;i++) {
+        auto [image, img_width, img_height] = load_image(path[i]);
+
+        images[i] = std::move(image);
+        spans[i] = images[i];
+
+        width = img_width;
+    }
+
+    cubemap = CubeMap(
+        spans, gl::GLenum::GL_SRGB8_ALPHA8, gl::GLenum::GL_RGBA, width        
+    );
+}
