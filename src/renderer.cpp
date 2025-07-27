@@ -86,7 +86,7 @@ void message_callback(
 
     switch (severity) {
     case GL_DEBUG_SEVERITY_NOTIFICATION:
-        SPDLOG_INFO(message);
+        // SPDLOG_INFO(message);
         break;
     case GL_DEBUG_SEVERITY_LOW:
         SPDLOG_WARN(message);
@@ -121,6 +121,7 @@ GLFWwindow* create_window(int width, int height) {
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
+    glfwSwapInterval(0);
 
     glfwShowWindow(window);
 
@@ -347,6 +348,14 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
 
     ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
+
+    ImGui::SliderFloat4("Albedo", glm::value_ptr(albedo), 0.0f, 1.0f);
+    ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
+    ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
+
+    glUniform4fv(9, 1, glm::value_ptr(albedo));
+    glUniform1f(10, metallicity);
+    glUniform1f(11, roughness);
 
     ImGui::End();
 

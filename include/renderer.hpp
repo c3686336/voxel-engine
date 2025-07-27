@@ -84,6 +84,10 @@ private:
     float bias_amt = 0.00044f;
     uint32_t model_select = 0;
 
+    glm::vec4 albedo{0.3f, 0.5f, 0.6f, 1.0f};
+    float metallicity = 0.0;
+    float roughness = 0.5;
+
     bool has_value;
 };
 

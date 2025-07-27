@@ -11,6 +11,11 @@ layout(location = 5) uniform vec3 camera_right;
 layout(location = 4) uniform vec3 camera_up;
 layout(location = 6) uniform float bias_amt;
 layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+
+vec3 base_refl = m_albedo.xyz;
 
 struct Node {
     uint mat_id;
@@ -239,6 +244,56 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
     return !isinf(hit_dist_squared);
 }
 
+vec3 flambert(vec3 albedo) {
+    return albedo / PI;
+}
+
+float D(vec3 N, vec3 H, float alpha) {
+    float numerator = alpha * alpha;
+
+    float a = max(dot(N, H), 0.0);
+    float sqterm = a*a * (numerator - 1.0) + 1.0;
+
+    return numerator / max(PI * sqterm * sqterm, 0.000001);
+}
+
+float G1(vec3 N, vec3 X, float alpha) {
+    float numerator = max(dot(N, X), 0.0);
+
+    float k = alpha / 2.0;
+    float denominator = numerator * (1.0 - k) + k;
+
+    return numerator / max(denominator, 0.000001);
+}
+
+float G(vec3 N, vec3 V, vec3 L, float alpha) {
+    return G1(N, V, alpha) * G1(N, L, alpha);
+}
+
+vec3 F(vec3 V, vec3 H, vec3 F0) {
+    return F0 + (vec3(1.0) - F0) * pow(1 - max(dot(V, H), 0.0), 5.0);
+}
+
+vec3 fcook_torrance(vec3 N, vec3 V, vec3 L, vec3 H, vec3 F0, float alpha) {
+    float d = D(N, H, alpha);
+    float g = G(N, V, L, alpha);
+    vec3 f = F(V, H, F0);
+
+    float numeator = 4.0 * max(dot(V, N), 0.0) * max(dot(L, N), 0.0);
+    
+    return d * g * f / max(numeator, 0.000001);
+}
+
+vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, vec3 F0, float roughness, float metallicity) {
+    vec3 H = normalize(N + L);
+    
+    float alpha = roughness * roughness;
+    vec3 ks = F(V, H, F0);
+    vec3 kd = (vec3(1.0) - ks) * (1.0 - metallicity);
+
+    return kd * flambert(albedo) + fcook_torrance(N, V, L, H, F0, alpha);
+}
+
 void main() {
     vec4 cam_ray_origin = vec4(camera_pos, 1.0);
     vec4 cam_ray_dir = vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0);
@@ -268,7 +323,19 @@ void main() {
         if (shadow_result) {
             frag_color = vec4(0.0, 0.0, 0.0, 0.0);
         } else {
-            frag_color = vec4(SUN_COLOR * dot(SUN_DIR, first_hit_normal), 1.0) * materials[first_hit_query.node.mat_id].albedo;
+            vec3 F0 = mix(vec3(0.04), m_albedo.rgb, m_metallicity);
+            frag_color = vec4(
+                brdf(
+                    first_hit_normal,
+                    -normalize(cam_ray_dir.xyz),
+                    SUN_DIR,
+                    m_albedo.rgb,
+                    F0,
+                    m_roughness,
+                    m_metallicity
+                    ) * max(dot(first_hit_normal, SUN_DIR), 0.0),
+                1.0
+                );
         }
     } else {
         frag_color = vec4(0.0, 0.0, 0.0, 0.0);

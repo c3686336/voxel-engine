@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
 
     SPDLOG_INFO("Creating SVODAG");
 
-    size_t depth = 8;
+    size_t depth = 6;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1 << depth;
@@ -75,32 +75,26 @@ int main(int argc, char** argv) {
     svodag.dedup();
 
     std::vector<SerializedNode> data = svodag.serialize();
+
+    size_t model1 = renderer.register_model(data, svodag.get_level());
     SPDLOG_INFO("After: {}", data.size());
 
     SPDLOG_INFO("Serialized SVODAG");
-    registry.emplace<Renderable>(
-        ball1, renderer.register_model(data, svodag.get_level()),
-        svodag.get_level(), true
-    );
-    registry.emplace<Transformable>(ball1, identity<mat4>());
+    
+    std::vector<entt::entity> balls;
+    for (int i=0;i<3;i++) {
+        for (int j=0;j<3;j++) {
+            for (int k=0;k<3;k++) {
+                // 1000 balls
 
-    vec3 ball2_pos = vec3(0.0, 1.5, 0.0);
-    vec3 ball2_rot_axis = vec3(0.0, 1.0, 0.0);
-    float ball2_rot_amt = 0.0;
-    vec3 ball2_scale = vec3(1.0, 1.0, 1.0);
-    registry.emplace<Renderable>(
-        ball2, renderer.register_model(data, svodag.get_level()),
-        svodag.get_level(), true
-    );
-    registry.emplace<Transformable>(
-        ball2, translate(
-                   rotate(
-                       scale(identity<mat4>(), ball2_scale), ball2_rot_amt,
-                       normalize(ball2_rot_axis)
-                   ),
-                   ball2_pos
-               )
-    );
+                auto ball = registry.create();
+                registry.emplace<Renderable>(ball, model1, svodag.get_level());
+                registry.emplace<Transformable>(
+                    ball, translate(scale(translate(identity<mat4>(), vec3(-0.5f)), vec3(2.0f)), vec3((float)i, (float)j, (float)k) * 3.f)
+                );
+            }
+        }
+    }
 
     bool grabbed = false;
     auto prev_escape_state = GLFW_RELEASE;
@@ -120,22 +114,12 @@ int main(int argc, char** argv) {
                 ImGui::SliderFloat(
                     "Mouse Sensitivity", &sensitivity, 0.0f, 4.0f
                 );
-                ImGui::SliderFloat3(
-                    "Ball2 Position", value_ptr(ball2_pos), -3.0, 3.0
-                );
-                ImGui::SliderFloat3(
-                    "Ball2 Scale", value_ptr(ball2_scale), -3.0, 3.0
-                );
-                ImGui::SliderFloat3(
-                    "Ball2 Rot Axis", value_ptr(ball2_rot_axis), -3.0, 3.0
-                );
-                ImGui::SliderFloat(
-                    "Ball2 Rot Amount", &ball2_rot_amt, -6, 6
-                );
 
                 double new_time = glfwGetTime();
                 float dt = -timer + new_time;
                 timer = new_time;
+
+                ImGui::Text("%f ms, %f FPS", dt * 1000.f, 1.f/dt);
 
                 int width, height;
                 glfwGetWindowSize(window, &width, &height);
@@ -193,15 +177,7 @@ int main(int argc, char** argv) {
                         -scaled_y, -pi<float>() * 0.49, pi<float>() * 0.49
                     );
                 }
-
-                registry.get<Transformable>(ball2).set_transform(translate(
-                    rotate(
-                        scale(identity<mat4>(), ball2_scale), ball2_rot_amt,
-                        normalize(ball2_rot_axis)
-                    ),
-                    ball2_pos
-                ));
-
+                
                 prev_escape_state = glfwGetKey(window, GLFW_KEY_ESCAPE);
 
                 camera.set_dir(pitch, yaw);
