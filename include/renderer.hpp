@@ -8,6 +8,7 @@
 #include "camera.hpp"
 #include "material.hpp"
 #include "material_list.hpp"
+#include "texture.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -48,7 +49,7 @@ public:
 	bool main_loop(entt::registry& registry, const std::function<void (GLFWwindow*, Camera&)> f);
     GLFWwindow* get_window() const;
 
-    inline size_t register_model(std::vector<SerializedNode> model, unsigned int max_level) {
+    inline size_t register_model(const std::vector<SerializedNode> model, const unsigned int max_level) {
         size_t id = svodag_ssbo.size();
         
         for (auto& elem : model) {
@@ -67,6 +68,8 @@ public:
         return matid;
     }
 
+    void use_cubemap(const std::array<std::filesystem::path, 6>&);
+    
 	virtual ~Renderer();
 private:
 	GLFWwindow* window;
@@ -80,6 +83,8 @@ private:
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER, 1024> materials;
 
     Camera camera;
+    
+    CubeMap cubemap;
 
     float bias_amt = 0.00044f;
     uint32_t model_select = 0;

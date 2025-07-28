@@ -23,6 +23,9 @@
 
 #include <entt/entt.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <filesystem>
 #include <format>
 #include <string>
@@ -38,6 +41,16 @@ int main(int argc, char** argv) {
     Renderer renderer(
         std::filesystem::path("simple.vert"),
         std::filesystem::path("simple.frag")
+    );
+    renderer.use_cubemap(
+        {
+            "res/right.jpg",
+            "res/left.jpg",
+            "res/top.jpg",
+            "res/bottom.jpg",
+            "res/front.jpg",
+            "res/back.jpg"
+        }
     );
 
     entt::registry registry;

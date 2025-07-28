@@ -12,6 +12,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <stb_image.h>
+
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
 
@@ -23,5 +25,22 @@ struct DeepHash {
 		return std::hash<T>(*t);
 	}
 };
+
+inline std::tuple<std::vector<std::byte>, int, int> load_image(const std::filesystem::path& path, int desired_channels = 4) {
+    // stbi_set_flip_vertically_on_load(true);
+
+    int width, height, channels;
+    std::byte* data = (std::byte*)stbi_load(path.c_str(), &width, &height, &channels, desired_channels);
+
+    if (data == NULL) {
+        throw std::runtime_error(std::format("Could not load the image, {}", path.string()));
+    }
+
+    std::vector<std::byte> image{data, data + width * height * desired_channels};
+
+    stbi_image_free(data);
+
+    return {image, width, height};
+}
 
 #endif

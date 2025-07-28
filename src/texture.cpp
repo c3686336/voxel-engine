@@ -27,3 +27,6 @@ void Texture::parameteri(gl::GLenum property_name, gl::GLint parameter) {
 void Texture::parameterf(gl::GLenum property_name, gl::GLfloat parameter) {
     gl::glTextureParameteri(texture, property_name, parameter);
 }
+
+Texture2D::Texture2D() noexcept : Texture{} {};
+CubeMap::CubeMap() noexcept : Texture{} {};

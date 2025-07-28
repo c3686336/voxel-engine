@@ -32,6 +32,7 @@ inc = include_directories('include')
 subdir('include')
 subdir('src')
 subdir('test')
+subdir('res')
 
 shaders_str = []
 foreach shader : shaders
@@ -52,7 +53,7 @@ copy_shaders = custom_target(
   command: ['cp', '@INPUT@', '@BUILD_ROOT@']
 )
 
-executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders, include_directories: inc, dependencies: deps)
+executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders + resource_copies, include_directories: inc, dependencies: deps)
 
 executable('raymarcher', raymarcher_src + voxel_engine_srcs, include_directories: inc, dependencies: deps)
 
