@@ -297,7 +297,7 @@ vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, vec3 F0, float roughness, float m
 
 void main() {
     vec4 cam_ray_origin = vec4(camera_pos, 1.0);
-    vec4 cam_ray_dir = vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0);
+    vec4 cam_ray_dir = normalize(vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0));
 
     vec4 first_hit_pos;
     QueryResult first_hit_query;
@@ -328,7 +328,7 @@ void main() {
             frag_color = vec4(
                 brdf(
                     first_hit_normal,
-                    -normalize(cam_ray_dir.xyz),
+                    -cam_ray_dir.xyz,
                     SUN_DIR,
                     m_albedo.rgb,
                     F0,
@@ -339,6 +339,6 @@ void main() {
                 );
         }
     } else {
-        frag_color = vec4(0.0, 0.0, 0.0, 0.0);
+        frag_color = texture(skybox, cam_ray_dir.xyz);
     }
 }

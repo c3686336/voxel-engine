@@ -42,6 +42,16 @@ int main(int argc, char** argv) {
         std::filesystem::path("simple.vert"),
         std::filesystem::path("simple.frag")
     );
+    renderer.use_cubemap(
+        {
+            "res/right.jpg",
+            "res/left.jpg",
+            "res/top.jpg",
+            "res/bottom.jpg",
+            "res/front.jpg",
+            "res/back.jpg"
+        }
+    );
 
     entt::registry registry;
 
