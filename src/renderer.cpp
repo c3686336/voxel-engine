@@ -110,6 +110,7 @@ GLFWwindow* create_window(int width, int height) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     GLFWwindow* window =
         glfwCreateWindow(width, height, "voxel engine", NULL, NULL);
@@ -218,11 +219,12 @@ GLuint load_shaders(
 }
 
 Renderer::Renderer(
-    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path
+    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path,
+    int width, int height
 )
-: camera(), cubemap(), has_value(true) {
-    window = create_window(640, 480);
-    initialize_gl(640, 480);
+: width(width), height(height), reservoir_index(0), camera(), cubemap(), has_value(true) {
+    window = create_window(width, height);
+    initialize_gl(width, height);
 
     vbo = create_vbo();
     ibo = create_ibo();
@@ -231,11 +233,16 @@ Renderer::Renderer(
     program = load_shaders(vs_path, fs_path);
 
     SPDLOG_INFO("Creating SSBO");
-    svodag_ssbo.allocate();
-    metadata_ssbo.allocate();
-    materials.allocate();
+    svodag_ssbo = AppendBuffer<SerializedNode, GL_SHADER_STORAGE_BUFFER>{10000};
+    metadata_ssbo = VectorBuffer<SvodagMetaData, GL_SHADER_STORAGE_BUFFER>{100};
+    materials = AppendBuffer<Material, GL_SHADER_STORAGE_BUFFER>{1024};
     materials.push_back(Material{});
     svodag_ssbo.push_back(SerializedNode{});
+
+    prev_reservoirs = {
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100},
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100}
+    };
 
     program = load_shaders(vs_path, fs_path);
     IMGUI_CHECKVERSION();
@@ -248,6 +255,7 @@ Renderer::Renderer(
 }
 
 Renderer::Renderer(Renderer&& other) noexcept {
+    is_first_frame = other.is_first_frame;
     window = other.window;
     vbo = other.vbo;
     ibo = other.vbo;
@@ -255,6 +263,8 @@ Renderer::Renderer(Renderer&& other) noexcept {
     program = other.program;
     metadata_ssbo = std::move(other.metadata_ssbo);
     svodag_ssbo = std::move(other.svodag_ssbo);
+    prev_reservoirs = std::move(other.prev_reservoirs);
+    reservoir_index = other.reservoir_index;
 
     camera = other.camera;
 
@@ -265,6 +275,7 @@ Renderer::Renderer(Renderer&& other) noexcept {
 Renderer& Renderer::operator=(Renderer&& other) noexcept {
     using std::swap;
 
+    swap(is_first_frame, other.is_first_frame);
     swap(window, other.window);
     swap(vbo, other.vbo);
     swap(ibo, other.ibo);
@@ -272,6 +283,8 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
     swap(program, other.program);
     swap(svodag_ssbo, other.svodag_ssbo);
     swap(metadata_ssbo, other.metadata_ssbo);
+    swap(prev_reservoirs, other.prev_reservoirs);
+    swap(reservoir_index, other.reservoir_index);
 
     camera = other.camera; // Just copy it
 
@@ -333,7 +346,14 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
     metadata_ssbo.bind(2);
     materials.bind(6);
     cubemap.bind(0);
+    prev_reservoirs[reservoir_index].bind(14);
+    prev_reservoirs[(reservoir_index + 1) % 2].bind(18);
+    reservoir_index = (reservoir_index + 1) % 2;
     glUniform1i(12, 0);
+    glUniform1i(15, width);
+    glUniform1i(16, height);
+    glUniform1i(17, is_first_frame);
+    is_first_frame = false;
 
     glm::vec3 x_basis = camera.camera_x_basis();
     glm::vec3 y_basis = camera.camera_y_basis();

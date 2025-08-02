@@ -40,7 +40,7 @@ typedef SimpleMaterial Material;
 
 class Renderer {
 public:
-	Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path);
+	Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path, int width, int height);
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& other) = delete;
 	Renderer(Renderer&& other) noexcept;
@@ -72,15 +72,22 @@ public:
     
 	virtual ~Renderer();
 private:
+    int width;
+    int height;
+    
 	GLFWwindow* window;
 	gl::GLuint vbo;
 	gl::GLuint ibo;
 	gl::GLuint vao;
 	gl::GLuint program;
 
-    AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER, 120000> svodag_ssbo;
-    VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER, 1024> metadata_ssbo;
-    AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER, 1024> materials;
+    AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
+    VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
+    AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
+
+    std::array<ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER>, 2> prev_reservoirs;
+    int reservoir_index;
+    bool is_first_frame = true;
 
     Camera camera;
     

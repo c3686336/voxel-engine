@@ -40,7 +40,9 @@ int main(int argc, char** argv) {
 
     Renderer renderer(
         std::filesystem::path("simple.vert"),
-        std::filesystem::path("simple.frag")
+        std::filesystem::path("simple.frag"),
+        1920,
+        1080
     );
     renderer.use_cubemap(
         {
