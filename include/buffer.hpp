@@ -19,23 +19,13 @@ public:
         using namespace gl;
         glGenBuffers(1, &buffer);
         glBindBuffer(type, buffer);
-        glNamedBufferStorage(
-            buffer,
-            size,
-            nullptr,
-            flags
-        );
+        glNamedBufferStorage(buffer, size, nullptr, flags);
     }
 
-    virtual ~Buffer() noexcept {
-        gl::glDeleteBuffers(1, &buffer);
-    }
+    virtual ~Buffer() noexcept { gl::glDeleteBuffers(1, &buffer); }
 
     Buffer(Buffer& other) = delete;
-    Buffer(Buffer&& other) noexcept
-        : buffer(other.buffer) {
-        other.buffer = 0;
-    }
+    Buffer(Buffer&& other) noexcept : buffer(other.buffer) { other.buffer = 0; }
 
     Buffer& operator=(Buffer& other) = delete;
     Buffer& operator=(Buffer&& other) noexcept {
@@ -56,21 +46,23 @@ protected:
     gl::GLuint buffer;
 };
 
-template <gl::GLenum type>
-class ImmutableBuffer : public Buffer<type> {
+template <gl::GLenum type> class ImmutableBuffer : public Buffer<type> {
 public:
     ImmutableBuffer() noexcept : Buffer<type>() {};
 
-    ImmutableBuffer(gl::GLsizeiptr size) : Buffer<type>(size, (gl::BufferStorageMask)0) {};
+    ImmutableBuffer(gl::GLsizeiptr size)
+        : Buffer<type>(size, (gl::BufferStorageMask)0) {};
+
 private:
 };
 
-template <gl::GLenum type>
-class MutableBuffer : public Buffer<type> {
+template <gl::GLenum type> class MutableBuffer : public Buffer<type> {
     // Abstracts a mutable buffer object by the use of persistent mapping. It
     // does not own the data.
 public:
-    MutableBuffer() noexcept : Buffer<type>(), size(), ptr(), sync(), index(0), n(0), allocation_size(0) {};
+    MutableBuffer() noexcept
+        : Buffer<type>(), size(), ptr(), sync(), index(0), n(0),
+          allocation_size(0) {};
     virtual ~MutableBuffer() noexcept {
         if (this->owns()) {
             for (int i = 0; i < 3; i++) {
@@ -87,13 +79,17 @@ public:
     MutableBuffer& operator=(MutableBuffer&& other) noexcept = default;
 
     MutableBuffer(size_t size, int n)
-    : Buffer<type>(size * n, gl::GL_MAP_WRITE_BIT | gl::GL_MAP_PERSISTENT_BIT | gl::GL_MAP_COHERENT_BIT),
-      size(std::vector<gl::GLsizeiptr>(n)),
-      ptr(),
-      sync(std::vector<gl::GLsync>(n, gl::glFenceSync(gl::GL_SYNC_GPU_COMMANDS_COMPLETE, 0))),
-      index(0),
-      n(n),
-      allocation_size(size) {
+        : Buffer<type>(
+              size * n, gl::GL_MAP_WRITE_BIT | gl::GL_MAP_PERSISTENT_BIT |
+                            gl::GL_MAP_COHERENT_BIT
+          ),
+          size(std::vector<gl::GLsizeiptr>(n)), ptr(),
+          sync(
+              std::vector<gl::GLsync>(
+                  n, gl::glFenceSync(gl::GL_SYNC_GPU_COMMANDS_COMPLETE, 0)
+              )
+          ),
+          index(0), n(n), allocation_size(size) {
         using namespace gl;
 
         unsigned char* pointer = (unsigned char*)glMapNamedBufferRange(
@@ -130,15 +126,17 @@ public:
     }
 
 protected:
-    template<typename T>
-    void write_raw(std::span<T> data) {
+    template <typename T> void write_raw(std::span<T> data) {
         if (!this->owns()) {
             SPDLOG_INFO("Attempting to write before allocating");
             return;
         }
 
         if (data.size_bytes() > allocation_size) {
-            SPDLOG_CRITICAL("glBufferSubdata anticipated to be out of range, {} > {}", data.size_bytes(), allocation_size);
+            SPDLOG_CRITICAL(
+                "glBufferSubdata anticipated to be out of range, {} > {}",
+                data.size_bytes(), allocation_size
+            );
             throw std::range_error(
                 "glBufferSubdata anticipated to be out of range"
             );
@@ -165,14 +163,17 @@ template <typename T, gl::GLenum type>
 class AppendBuffer : public Buffer<type> {
     // A buffer that can only be extended
 public:
-    AppendBuffer() noexcept : cpu_buffer(), used(0), Buffer<type>(), max_len(0) {};
+    AppendBuffer() noexcept
+        : cpu_buffer(), used(0), Buffer<type>(), max_len(0) {};
     AppendBuffer(AppendBuffer<T, type>&& other) noexcept = default;
-    AppendBuffer(size_t length) noexcept : Buffer<type>(length * sizeof(T), gl::GL_DYNAMIC_STORAGE_BIT), used(0), max_len(length) {
+    AppendBuffer(size_t length) noexcept
+        : Buffer<type>(length * sizeof(T), gl::GL_DYNAMIC_STORAGE_BIT), used(0),
+          max_len(length) {
         cpu_buffer.reserve(length);
     };
 
     AppendBuffer& operator=(AppendBuffer<T, type>&& other) noexcept = default;
-    
+
     size_t push_back(const T& obj) {
         if (cpu_buffer.size() == max_len) {
             throw std::range_error("The buffer is full");
@@ -186,9 +187,11 @@ public:
     size_t size() { return cpu_buffer.size(); }
 
     void upload() {
-        gl::glNamedBufferSubData(this->buffer, 0, cpu_buffer.size() * sizeof(T), cpu_buffer.data());
+        gl::glNamedBufferSubData(
+            this->buffer, 0, cpu_buffer.size() * sizeof(T), cpu_buffer.data()
+        );
 
-        used = cpu_buffer.size()*sizeof(T);
+        used = cpu_buffer.size() * sizeof(T);
     }
 
 private:
@@ -201,7 +204,8 @@ template <typename T, gl::GLenum type>
 class VectorBuffer : public MutableBuffer<type> {
 public:
     VectorBuffer() noexcept : data() {};
-    VectorBuffer(size_t length) noexcept : data(), MutableBuffer<type>(length * sizeof(T), 3) {
+    VectorBuffer(size_t length) noexcept
+        : data(), MutableBuffer<type>(length * sizeof(T), 3) {
         data.reserve(length);
     }
     VectorBuffer(VectorBuffer<T, type>&& other) noexcept = default;

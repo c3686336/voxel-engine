@@ -34,7 +34,9 @@ public:
         gl::glDeleteBuffers(1, &ssbo);
     }
 
-    MaterialList(MaterialList<T, L>& other) noexcept : materials(other.materials), n_materials(other.n_materials), has_data(other.has_data), n_materials_ingpu(other.n_materials) {
+    MaterialList(MaterialList<T, L>& other) noexcept
+        : materials(other.materials), n_materials(other.n_materials),
+          has_data(other.has_data), n_materials_ingpu(other.n_materials) {
         gl::glGenBuffers(1, &ssbo);
         gl::glBindBuffer(gl::GLenum::GL_SHADER_STORAGE_BUFFER, ssbo);
         glNamedBufferStorage(
@@ -73,7 +75,7 @@ public:
 
     MaterialList<T, L> operator=(MaterialList<T, L> other) noexcept {
         using std::swap;
-        
+
         swap(*this, other);
 
         return *this;

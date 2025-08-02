@@ -102,7 +102,7 @@ Reservoir new_reservoir() {
     return Reservoir(
         Sample(vec4[3](vec4(0), vec4(0), vec4(0, 0, 0, 0)), 0),
         0.0
-        );
+    );
 }
 
 void updateR(inout Reservoir r, Sample s, float weight) {
@@ -220,9 +220,9 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
         float size = level_to_size(result.at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
-            cur_pos,
-            result.at_level,
-            level
+                cur_pos,
+                result.at_level,
+                level
             );
 
         vec3 cur_vox_end = cur_vox_start + vec3(size);
@@ -236,17 +236,17 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
         }
 
         vec2 minmax = slab_test(
-            cur_vox_start,
-            cur_vox_end,
-            cur_pos,
-            dir_inv,
-            limiting_axis_min,
-            limiting_axis_max
+                cur_vox_start,
+                cur_vox_end,
+                cur_pos,
+                dir_inv,
+                limiting_axis_min,
+                limiting_axis_max
             );
 
         minmax = max(vec2(0.0, 0.0), minmax);
 
-        cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
+        cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0 ? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
 
         iters++;
     }
@@ -270,9 +270,9 @@ bool trace(vec4 origin, vec4 dir, out vec4 hit_pos, out QueryResult hit_query, o
 
         bvec3 limiting_axis_min;
         bvec3 limiting_axis_max;
-        
+
         vec2 minmax_modelsp = slab_test(vec3(0.0), vec3(1.0), origin_modelsp.xyz, dir_inv_modelsp, limiting_axis_min, limiting_axis_max);
-        
+
         minmax_modelsp.x = max(0.0, minmax_modelsp.x);
 
         bool intersected = minmax_modelsp.y > minmax_modelsp.x;
@@ -333,7 +333,7 @@ float D(vec3 N, vec3 H, float alpha) {
     float numerator = alpha * alpha;
 
     float a = max(dot(N, H), 0.0);
-    float sqterm = a*a * (numerator - 1.0) + 1.0;
+    float sqterm = a * a * (numerator - 1.0) + 1.0;
 
     return numerator / max(PI * sqterm * sqterm, 0.000001);
 }
@@ -361,16 +361,16 @@ vec3 fcook_torrance(vec3 N, vec3 V, vec3 L, vec3 H, vec3 F0, float alpha) {
     vec3 f = F(V, H, F0);
 
     float numeator = 4.0 * max(dot(V, N), 0.0) * max(dot(L, N), 0.0);
-    
+
     return d * g * f / max(numeator, 0.000001);
 }
 
 vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallicity);
-    
+
     vec3 H = normalize(N + L);
-    
+
     float alpha = roughness * roughness;
     vec3 ks = F(V, H, F0);
     vec3 kd = (vec3(1.0) - ks) * (1.0 - metallicity);
@@ -386,30 +386,30 @@ float phat(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float
     vec3 shadow_normal;
     uint shadow_mi;
     bool shadow_result = trace(
-        pos + bias_amt * vec4(N, 0.0), vec4(L, 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+            pos + bias_amt * vec4(N, 0.0), vec4(L, 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
         );
-    
-    return shadow_result? 0.0 : dot(texture(skybox, L).xyz, brdf(
-                   N,
-                   V,
-                   L,
-                   albedo,
-                   roughness,
-                   metallicity
-                   )) * dot(N, L);
+
+    return shadow_result ? 0.0 : dot(texture(skybox, L).xyz, brdf(
+            N,
+            V,
+            L,
+            albedo,
+            roughness,
+            metallicity
+        )) * dot(N, L);
 }
 
 float phat1(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
     // No visibility
-    
+
     return dot(texture(skybox, L).xyz, brdf(
-                   N,
-                   V,
-                   L,
-                   albedo,
-                   roughness,
-                   metallicity
-                   )) * dot(N, L);
+            N,
+            V,
+            L,
+            albedo,
+            roughness,
+            metallicity
+        )) * dot(N, L);
 }
 
 void main() {
@@ -422,8 +422,8 @@ void main() {
     uint first_hit_index;
 
     bool result = trace(
-        cam_ray_origin, cam_ray_dir,
-        first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
+            cam_ray_origin, cam_ray_dir,
+            first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
         );
 
     frag_color.w = 1.0;
@@ -434,18 +434,18 @@ void main() {
 
         // Simple RIS pass;
         Reservoir r = new_reservoir();
-        for (int i=0;i<N_SAMPLES;i++) {
+        for (int i = 0; i < N_SAMPLES; i++) {
             Sample s = sample_hemisphere(N, cam_ray_origin, first_hit_pos);
             float m = 1.0 / float(N_SAMPLES);
 
             float w = phat1(
-                s.path[1],
-                N,
-                V,
-                s.path[2].xyz,
-                m_albedo.xyz,
-                m_roughness,
-                m_metallicity
+                    s.path[1],
+                    N,
+                    V,
+                    s.path[2].xyz,
+                    m_albedo.xyz,
+                    m_roughness,
+                    m_metallicity
                 ) * s.W * m;
 
             updateR(r, s, w);
@@ -456,13 +456,13 @@ void main() {
 
         Reservoir r_st = new_reservoir();
         if (!is_first_frame) { // Skipping check for border pixels seemingly doesn't matter
-            for (int i=-2;i<3;i++) {
-                for (int j=-2;j<3;j++) {
+            for (int i = -2; i < 3; i++) {
+                for (int j = -2; j < 3; j++) {
                     Sample s = in_samples[width * (window_coord.y + i) + window_coord.x + j];
 
                     float m = 1.0 / 25.0; // For now
                     float w = phat1(
-                        first_hit_pos, N, V, s.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
+                            first_hit_pos, N, V, s.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
                         ) * s.W * m;
 
                     updateR(r_st, s, w);
@@ -472,8 +472,8 @@ void main() {
 
         Sample chosen = r.sample_chosen;
         float wy = r.total_weight / phat1(
-            chosen.path[1], N, V, chosen.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
-            );
+                    chosen.path[1], N, V, chosen.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
+                );
 
         Sample pixel_sample = chosen;
         pixel_sample.W = wy;
@@ -486,17 +486,17 @@ void main() {
         vec3 shadow_normal;
         uint shadow_mi;
         bool shadow_result = trace(
-            first_hit_pos + bias_amt * vec4(first_hit_normal, 0.0) * 3.0, pixel_sample.path[2], shadow_hpos, shadow_q, shadow_normal, shadow_mi
+                first_hit_pos + bias_amt * vec4(first_hit_normal, 0.0) * 3.0, pixel_sample.path[2], shadow_hpos, shadow_q, shadow_normal, shadow_mi
             );
 
-        frag_color.xyz = shadow_result? vec3(0.0) : pixel_sample.W * texture(skybox, pixel_sample.path[2].xyz).xyz * brdf(
-            N,
-            V,
-            pixel_sample.path[2].xyz,
-            m_albedo.xyz,
-            m_roughness,
-            m_metallicity
-            );
+        frag_color.xyz = shadow_result ? vec3(0.0) : pixel_sample.W * texture(skybox, pixel_sample.path[2].xyz).xyz * brdf(
+                    N,
+                    V,
+                    pixel_sample.path[2].xyz,
+                    m_albedo.xyz,
+                    m_roughness,
+                    m_metallicity
+                );
     } else {
         frag_color = texture(skybox, cam_ray_dir.xyz);
     }

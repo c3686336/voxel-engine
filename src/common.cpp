@@ -8,17 +8,17 @@
 #include <spdlog/spdlog.h>
 
 std::string load_file(const std::filesystem::path& path) {
-	std::ifstream file(path);
+    std::ifstream file(path);
 
-	if (!file.is_open()) {
-		SPDLOG_CRITICAL("Could not open the file {}", path.string());
-		exit(1);
-	}
+    if (!file.is_open()) {
+        SPDLOG_CRITICAL("Could not open the file {}", path.string());
+        exit(1);
+    }
 
-	std::ostringstream contents;
-	contents << file.rdbuf();
+    std::ostringstream contents;
+    contents << file.rdbuf();
 
-	// SPDLOG_INFO("File loaded. Content: {}", contents.str());
+    // SPDLOG_INFO("File loaded. Content: {}", contents.str());
 
-	return contents.str();
+    return contents.str();
 }

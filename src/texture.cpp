@@ -1,8 +1,6 @@
 #include "texture.hpp"
 
-Texture::~Texture() noexcept {
-    gl::glDeleteTextures(1, &texture);
-}
+Texture::~Texture() noexcept { gl::glDeleteTextures(1, &texture); }
 
 Texture::Texture(Texture&& other) noexcept : texture(other.texture) {
     other.texture = 0;
@@ -16,9 +14,7 @@ Texture& Texture::operator=(Texture&& other) noexcept {
     return *this;
 }
 
-void Texture::bind(gl::GLuint unit) {
-    gl::glBindTextureUnit(unit, texture);
-}
+void Texture::bind(gl::GLuint unit) { gl::glBindTextureUnit(unit, texture); }
 
 void Texture::parameteri(gl::GLenum property_name, gl::GLint parameter) {
     gl::glTextureParameteri(texture, property_name, parameter);

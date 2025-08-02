@@ -40,19 +40,11 @@ int main(int argc, char** argv) {
 
     Renderer renderer(
         std::filesystem::path("simple.vert"),
-        std::filesystem::path("simple.frag"),
-        1920,
-        1080
+        std::filesystem::path("simple.frag"), 1920, 1080
     );
     renderer.use_cubemap(
-        {
-            "res/right.jpg",
-            "res/left.jpg",
-            "res/top.jpg",
-            "res/bottom.jpg",
-            "res/front.jpg",
-            "res/back.jpg"
-        }
+        {"res/right.jpg", "res/left.jpg", "res/top.jpg", "res/bottom.jpg",
+         "res/front.jpg", "res/back.jpg"}
     );
 
     entt::registry registry;
@@ -95,17 +87,23 @@ int main(int argc, char** argv) {
     SPDLOG_INFO("After: {}", data.size());
 
     SPDLOG_INFO("Serialized SVODAG");
-    
+
     std::vector<entt::entity> balls;
-    for (int i=0;i<3;i++) {
-        for (int j=0;j<3;j++) {
-            for (int k=0;k<3;k++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
                 // 1000 balls
 
                 auto ball = registry.create();
                 registry.emplace<Renderable>(ball, model1, svodag.get_level());
                 registry.emplace<Transformable>(
-                    ball, translate(scale(translate(identity<mat4>(), vec3(-0.5f)), vec3(2.0f)), vec3((float)i, (float)j, (float)k) * 3.f)
+                    ball,
+                    translate(
+                        scale(
+                            translate(identity<mat4>(), vec3(-0.5f)), vec3(2.0f)
+                        ),
+                        vec3((float)i, (float)j, (float)k) * 3.f
+                    )
                 );
             }
         }
@@ -134,7 +132,7 @@ int main(int argc, char** argv) {
                 float dt = -timer + new_time;
                 timer = new_time;
 
-                ImGui::Text("%f ms, %f FPS", dt * 1000.f, 1.f/dt);
+                ImGui::Text("%f ms, %f FPS", dt * 1000.f, 1.f / dt);
 
                 int width, height;
                 glfwGetWindowSize(window, &width, &height);
@@ -192,7 +190,7 @@ int main(int argc, char** argv) {
                         -scaled_y, -pi<float>() * 0.49, pi<float>() * 0.49
                     );
                 }
-                
+
                 prev_escape_state = glfwGetKey(window, GLFW_KEY_ESCAPE);
 
                 camera.set_dir(pitch, yaw);

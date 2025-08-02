@@ -22,10 +22,9 @@ size_t bitmask_to_index(
 }
 
 // Implementations
-SvoNode::SvoNode() noexcept : SvoNode(0){};
+SvoNode::SvoNode() noexcept : SvoNode(0) {};
 
-SvoNode::SvoNode(MatID_t mat_id) noexcept
-    : mat_id(mat_id), children(){};
+SvoNode::SvoNode(MatID_t mat_id) noexcept : mat_id(mat_id), children() {};
 
 void SvoNode::insert(
     const size_t x_bitmask, const size_t y_bitmask, const size_t z_bitmask,
@@ -43,18 +42,21 @@ void SvoNode::insert(
 
     if (!children[index]) {
         // Allocate them
-		// New Semantic: All nodes have either 8 or 0 children.
-		for (int i=0;i<8;i++) {
-			assert(children[i] == nullptr); // Guaruntee: All nodes must have 8 children or not at all. 
-			children[i] = std::make_shared<SvoNode>(); // Maybe explicitely set the color here?
-		}
+        // New Semantic: All nodes have either 8 or 0 children.
+        for (int i = 0; i < 8; i++) {
+            assert(
+                children[i] == nullptr
+            ); // Guaruntee: All nodes must have 8 children or not at all.
+            children[i] = std::make_shared<SvoNode>(); // Maybe explicitely set
+                                                       // the color here?
+        }
         // children[index] = std::make_shared<SvoNode>();
     }
 #ifdef DAG
     // If the node has been de-duped
-    // This will create memory overhead if there is any external reference to this node;
-    // Unlikely. However, be careful not to call this function while serializing
-    // or dedupping
+    // This will create memory overhead if there is any external reference to
+    // this node; Unlikely. However, be careful not to call this function while
+    // serializing or dedupping
     if (children[index].use_count() != 1) {
         // deep-copy the node
         children[index] = std::make_shared<SvoNode>(*children[index]);
@@ -131,13 +133,15 @@ const std::optional<QueryResult> SvoNode::query(
         }
 
     } else {
-		// Same here: If there are no children (As guaranteed), return this.
+        // Same here: If there are no children (As guaranteed), return this.
         return std::nullopt;
     }
 }
 
-SvoDag::SvoDag() noexcept : root(std::make_shared<SvoNode>()), level(8 /*2^8^3 = 256^3 voxels*/) {};
-SvoDag::SvoDag(size_t level) noexcept : root(std::make_shared<SvoNode>()), level(level) {};
+SvoDag::SvoDag() noexcept
+    : root(std::make_shared<SvoNode>()), level(8 /*2^8^3 = 256^3 voxels*/) {};
+SvoDag::SvoDag(size_t level) noexcept
+    : root(std::make_shared<SvoNode>()), level(level) {};
 
 void SvoDag::insert(const glm::vec3 pos, const MatID_t mat_id) noexcept {
     size_t x_bitmask = pos.x * (1 << level);
@@ -203,20 +207,19 @@ const std::vector<SerializedNode> SvoDag::serialize() const noexcept {
     return buffer;
 }
 
-std::tuple<size_t, size_t, size_t> pos_to_bitmask(const glm::vec3 pos, size_t level) noexcept {
-	return std::make_tuple<size_t, size_t, size_t>(
-		pos.x * (1 << level),
-		pos.y * (1 << level),
-		pos.z * (1 << level)
-	);
+std::tuple<size_t, size_t, size_t>
+pos_to_bitmask(const glm::vec3 pos, size_t level) noexcept {
+    return std::make_tuple<size_t, size_t, size_t>(
+        pos.x * (1 << level), pos.y * (1 << level), pos.z * (1 << level)
+    );
 }
 
 MatID_t SvoDag::get(const glm::vec3 pos) const noexcept {
-	auto bitmask = pos_to_bitmask(pos, level);
+    auto bitmask = pos_to_bitmask(pos, level);
 
-	size_t x_bitmask = std::get<0>(bitmask);
-	size_t y_bitmask = std::get<1>(bitmask);
-	size_t z_bitmask = std::get<2>(bitmask);
+    size_t x_bitmask = std::get<0>(bitmask);
+    size_t y_bitmask = std::get<1>(bitmask);
+    size_t z_bitmask = std::get<2>(bitmask);
 
     return get(x_bitmask, y_bitmask, z_bitmask);
 }
@@ -227,23 +230,23 @@ MatID_t SvoDag::get(
     return root->get(x_bitmask, y_bitmask, z_bitmask, level);
 }
 
-
 const QueryResult SvoDag::query(const glm::vec3 pos) const noexcept {
-	auto bitmask = pos_to_bitmask(pos, level);
+    auto bitmask = pos_to_bitmask(pos, level);
 
-	size_t x_bitmask = std::get<0>(bitmask);
-	size_t y_bitmask = std::get<1>(bitmask);
-	size_t z_bitmask = std::get<2>(bitmask);
+    size_t x_bitmask = std::get<0>(bitmask);
+    size_t y_bitmask = std::get<1>(bitmask);
+    size_t z_bitmask = std::get<2>(bitmask);
 
-	auto result = root->query(x_bitmask, y_bitmask, z_bitmask, level);
-	// TODO: In order to support max_level, SvoNode::query needs to be refactored
+    auto result = root->query(x_bitmask, y_bitmask, z_bitmask, level);
+    // TODO: In order to support max_level, SvoNode::query needs to be
+    // refactored
 
     return result.value_or({root, level});
 }
 
 void SvoDag::dedup() noexcept {
     std::unordered_map<SvoNode, std::shared_ptr<SvoNode>> map{};
-    for (int i=level-1;i>=0;i--) {
+    for (int i = level - 1; i >= 0; i--) {
         root->dedup(map, i);
     }
 
@@ -287,12 +290,13 @@ void SvoNode::solidify_tree() {
 
         child->solidify_tree();
     }
-    
+
     solidify_this();
 }
 
 void SvoNode::solidify_this() {
-    // If all children are terminal and has the same mat_id, promote the mat_id to this node and make this node terminal.
+    // If all children are terminal and has the same mat_id, promote the mat_id
+    // to this node and make this node terminal.
 
     bool all = true;
     std::shared_ptr<SvoNode> reference = children[0];
@@ -306,7 +310,7 @@ void SvoNode::solidify_this() {
             return; // Has grandchildren; No point in solidification
         }
     }
-    
+
     for (auto& child : children) {
         if (child != reference) {
             return;
@@ -321,8 +325,9 @@ size_t std::hash<SvoNode>::operator()(const SvoNode& node) const noexcept {
     size_t h1 = std::hash<MatID_t>{}(node.mat_id);
     size_t h2 = std::hash<std::shared_ptr<SvoNode>>{}(node.children[0]);
 
-    for (int i=1; i<8; i++) {
-        h2 = h2 ^ (std::hash<std::shared_ptr<SvoNode>>{}(node.children[i]) << 1);
+    for (int i = 1; i < 8; i++) {
+        h2 =
+            h2 ^ (std::hash<std::shared_ptr<SvoNode>>{}(node.children[i]) << 1);
     }
 
     return h1 ^ (h2 << 1);

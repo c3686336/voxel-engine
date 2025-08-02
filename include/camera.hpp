@@ -34,7 +34,8 @@ public:
         // dir = glm::angleAxis(pitch, glm::vec3(1.0, 0.0, 0.0)) *
         //       glm::angleAxis(yaw, glm::vec3(0.0, 1.0, 0.0)) *
         //       glm::vec3(0.0, 0.0, -1.0);
-        dir = glm::yawPitchRoll(yaw, pitch, 0.0f) * glm::vec4(0.0, 0.0, -1.0, 0.0);
+        dir = glm::yawPitchRoll(yaw, pitch, 0.0f) *
+              glm::vec4(0.0, 0.0, -1.0, 0.0);
     }
 
     inline glm::vec3 camera_x_basis() {
@@ -47,7 +48,8 @@ public:
     }
 
     inline glm::vec3 camera_y_basis() {
-        return tanf(half_fov) * glm::normalize(glm::cross(glm::cross(dir, up), dir));
+        return tanf(half_fov) *
+               glm::normalize(glm::cross(glm::cross(dir, up), dir));
     }
 
     inline void set_fov(float new_fov) { half_fov = new_fov; }
@@ -56,7 +58,9 @@ public:
 
     inline glm::vec3 forward() { return dir; };
     inline glm::vec3 backward() { return -dir; };
-    inline glm::vec3 rightward() { return glm::normalize(glm::cross(dir, up)); };
+    inline glm::vec3 rightward() {
+        return glm::normalize(glm::cross(dir, up));
+    };
     inline glm::vec3 leftward() { return -rightward(); };
     inline glm::vec3 upward() { return up; };
     inline glm::vec3 downward() { return -up; };

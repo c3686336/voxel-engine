@@ -1,11 +1,11 @@
 #include "renderer.hpp"
 
 #include "common.hpp"
+#include "components.hpp"
 #include "formatter.hpp"
+#include "renderable.hpp"
 #include "svodag.hpp"
 #include "vertex.hpp"
-#include "renderable.hpp"
-#include "components.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -222,7 +222,8 @@ Renderer::Renderer(
     const std::filesystem::path& vs_path, const std::filesystem::path& fs_path,
     int width, int height
 )
-: width(width), height(height), reservoir_index(0), camera(), cubemap(), has_value(true) {
+    : width(width), height(height), reservoir_index(0), camera(), cubemap(),
+      has_value(true) {
     window = create_window(width, height);
     initialize_gl(width, height);
 
@@ -310,7 +311,9 @@ Renderer::~Renderer() {
     glfwTerminate();
 }
 
-bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFWwindow*, Camera&)> f) {
+bool Renderer::main_loop(
+    entt::registry& registry, const std::function<void(GLFWwindow*, Camera&)> f
+) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -330,14 +333,13 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
                 metadata_ssbo.data.emplace_back(
                     transformable.get_inv_transform(),
                     transformable.get_transform(),
-                    transformable.get_normal_transform(),
-                    renderable.max_level,
+                    transformable.get_normal_transform(), renderable.max_level,
                     renderable.model_id
                 );
             }
         }
     );
-    
+
     metadata_ssbo.upload();
 
     glUseProgram(program);
@@ -401,8 +403,8 @@ void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
     std::array<std::vector<std::byte>, 6> images;
     std::array<std::span<std::byte>, 6> spans;
     int width;
-    
-    for (int i=0;i<6;i++) {
+
+    for (int i = 0; i < 6; i++) {
         auto [image, img_width, img_height] = load_image(path[i]);
 
         images[i] = std::move(image);
@@ -411,7 +413,6 @@ void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
         width = img_width;
     }
 
-    cubemap = CubeMap(
-        spans, gl::GLenum::GL_SRGB8_ALPHA8, gl::GLenum::GL_RGBA, width        
-    );
+    cubemap =
+        CubeMap(spans, gl::GLenum::GL_SRGB8_ALPHA8, gl::GLenum::GL_RGBA, width);
 }

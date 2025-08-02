@@ -12,8 +12,9 @@ struct std::formatter<glm::vec<L, T, Q>, CharT> {
     template <typename FormatParseContext>
     constexpr auto parse(FormatParseContext& pc) {
         // parse formatter args like padding, precision if you support it
-        return pc.begin(); // returns the iterator to the last parsed character in the format
-           // string, in this case we just swallow everything
+        return pc.begin(); // returns the iterator to the last parsed character
+                           // in the format string, in this case we just swallow
+                           // everything
     }
 
     template <typename FormatContext>

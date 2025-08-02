@@ -2,13 +2,13 @@
 #define RENDERER_H
 
 #include "buffer.hpp"
-#include "common.hpp"
-#include "vertex.hpp"
-#include "svodag.hpp"
 #include "camera.hpp"
+#include "common.hpp"
 #include "material.hpp"
 #include "material_list.hpp"
+#include "svodag.hpp"
 #include "texture.hpp"
+#include "vertex.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -23,10 +23,10 @@
 
 #include <entt/entt.hpp>
 
-#include <format>
-#include <string>
 #include <filesystem>
+#include <format>
 #include <functional>
+#include <string>
 
 typedef struct alignas(16) {
     alignas(16) glm::mat4 model_inv;
@@ -40,18 +40,26 @@ typedef SimpleMaterial Material;
 
 class Renderer {
 public:
-	Renderer(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path, int width, int height);
-	Renderer(const Renderer& other) = delete;
-	Renderer& operator=(const Renderer& other) = delete;
-	Renderer(Renderer&& other) noexcept;
-	Renderer& operator=(Renderer&& other) noexcept;
+    Renderer(
+        const std::filesystem::path& vs_path,
+        const std::filesystem::path& fs_path, int width, int height
+    );
+    Renderer(const Renderer& other) = delete;
+    Renderer& operator=(const Renderer& other) = delete;
+    Renderer(Renderer&& other) noexcept;
+    Renderer& operator=(Renderer&& other) noexcept;
 
-	bool main_loop(entt::registry& registry, const std::function<void (GLFWwindow*, Camera&)> f);
+    bool main_loop(
+        entt::registry& registry,
+        const std::function<void(GLFWwindow*, Camera&)> f
+    );
     GLFWwindow* get_window() const;
 
-    inline size_t register_model(const std::vector<SerializedNode> model, const unsigned int max_level) {
+    inline size_t register_model(
+        const std::vector<SerializedNode> model, const unsigned int max_level
+    ) {
         size_t id = svodag_ssbo.size();
-        
+
         for (auto& elem : model) {
             svodag_ssbo.push_back(elem);
         }
@@ -69,28 +77,30 @@ public:
     }
 
     void use_cubemap(const std::array<std::filesystem::path, 6>&);
-    
-	virtual ~Renderer();
+
+    virtual ~Renderer();
+
 private:
     int width;
     int height;
-    
-	GLFWwindow* window;
-	gl::GLuint vbo;
-	gl::GLuint ibo;
-	gl::GLuint vao;
-	gl::GLuint program;
+
+    GLFWwindow* window;
+    gl::GLuint vbo;
+    gl::GLuint ibo;
+    gl::GLuint vao;
+    gl::GLuint program;
 
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
 
-    std::array<ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER>, 2> prev_reservoirs;
+    std::array<ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER>, 2>
+        prev_reservoirs;
     int reservoir_index;
     bool is_first_frame = true;
 
     Camera camera;
-    
+
     CubeMap cubemap;
 
     float bias_amt = 0.00044f;
