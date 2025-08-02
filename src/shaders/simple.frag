@@ -3,6 +3,7 @@
 #define PI 3.1415926538
 #define SUN_DIR normalize(vec3(0.3, 0.7, 0.5))
 #define SUN_COLOR vec3(1.0, 1.0, 1.0)
+#define N_SAMPLES 32
 
 layout(location = 0) in vec2 frag_pos;
 layout(location = 1) uniform vec3 camera_pos;
@@ -79,6 +80,38 @@ struct SimpleMaterial {
     vec4 albedo;
 };
 
+struct Sample {
+    vec4[3] path; // .w = 1 for point, .w = 0 for direction
+    float W;
+};
+
+Sample sample_hemisphere(vec3 N, vec4 x0, vec4 x1) {
+    vec3 sample_dir = rand_sphere();
+    // Fold it in the direction of first_hit_normal
+    sample_dir = sample_dir - 2.0 * N * min(dot(N, sample_dir), 0.0);
+
+    return Sample(vec4[3](x0, x1, vec4(sample_dir, 0.0)), 0.5 / PI);
+}
+
+struct Reservoir {
+    Sample sample_chosen; // = Sample(vec4[1](vec4(0.0, 0.0, 0.0, 0.0)), 0.0);
+    float total_weight; // = 0.0;
+};
+
+Reservoir new_reservoir() {
+    return Reservoir(
+        Sample(vec4[3](vec4(0), vec4(0), vec4(0, 0, 0, 0)), 0),
+        0.0
+        );
+}
+
+void updateR(inout Reservoir r, Sample s, float weight) {
+    r.total_weight += weight;
+    if (randf() <= (weight / r.total_weight)) {
+        r.sample_chosen = s;
+    }
+}
+
 layout(std430, binding = 3) buffer one {
     Node nodes[];
 };
@@ -89,6 +122,14 @@ layout(std430, binding = 2) buffer two {
 
 layout(std430, binding = 6) buffer matids {
     SimpleMaterial materials[];
+};
+
+layout(std430, binding = 14) buffer prev_samples_in {
+    Sample in_samples[];
+};
+
+layout(std430, binding = 18) buffer prev_samples_out {
+    Sample out_samples[];
 };
 
 out vec4 frag_color;
@@ -324,7 +365,10 @@ vec3 fcook_torrance(vec3 N, vec3 V, vec3 L, vec3 H, vec3 F0, float alpha) {
     return d * g * f / max(numeator, 0.000001);
 }
 
-vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, vec3 F0, float roughness, float metallicity) {
+vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallicity);
+    
     vec3 H = normalize(N + L);
     
     float alpha = roughness * roughness;
@@ -332,6 +376,40 @@ vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, vec3 F0, float roughness, float m
     vec3 kd = (vec3(1.0) - ks) * (1.0 - metallicity);
 
     return kd * flambert(albedo) + fcook_torrance(N, V, L, H, F0, alpha);
+}
+
+float phat(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+    // Full pdf
+
+    vec4 shadow_hpos;
+    QueryResult shadow_q;
+    vec3 shadow_normal;
+    uint shadow_mi;
+    bool shadow_result = trace(
+        pos + bias_amt * vec4(N, 0.0), vec4(L, 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+        );
+    
+    return shadow_result? 0.0 : dot(texture(skybox, L).xyz, brdf(
+                   N,
+                   V,
+                   L,
+                   albedo,
+                   roughness,
+                   metallicity
+                   )) * dot(N, L);
+}
+
+float phat1(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+    // No visibility
+    
+    return dot(texture(skybox, L).xyz, brdf(
+                   N,
+                   V,
+                   L,
+                   albedo,
+                   roughness,
+                   metallicity
+                   )) * dot(N, L);
 }
 
 void main() {
@@ -348,35 +426,77 @@ void main() {
         first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
         );
 
-    if (result) {
-        // Cast a shadow ray
-        vec4 shadow_hit_pos;
-        QueryResult shadow_hit_query;
-        vec3 shadow_hit_normal;
-        uint shadow_hit_index;
+    frag_color.w = 1.0;
 
-        bool shadow_result = trace(
-            first_hit_pos + 0.001 * vec4(first_hit_normal, 0.0), vec4(SUN_DIR, 0.0),
-            shadow_hit_pos, shadow_hit_query, shadow_hit_normal, shadow_hit_index
+    if (result) {
+        vec3 N = first_hit_normal;
+        vec3 V = -cam_ray_dir.xyz;
+
+        // Simple RIS pass;
+        Reservoir r = new_reservoir();
+        for (int i=0;i<N_SAMPLES;i++) {
+            Sample s = sample_hemisphere(N, cam_ray_origin, first_hit_pos);
+            float m = 1.0 / float(N_SAMPLES);
+
+            float w = phat1(
+                s.path[1],
+                N,
+                V,
+                s.path[2].xyz,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+                ) * s.W * m;
+
+            updateR(r, s, w);
+        }
+
+        // Spatiotemporal reuse
+        ivec2 window_coord = ivec2(gl_FragCoord.xy);
+
+        Reservoir r_st = new_reservoir();
+        if (!is_first_frame) { // Skipping check for border pixels seemingly doesn't matter
+            for (int i=-2;i<3;i++) {
+                for (int j=-2;j<3;j++) {
+                    Sample s = in_samples[width * (window_coord.y + i) + window_coord.x + j];
+
+                    float m = 1.0 / 25.0; // For now
+                    float w = phat1(
+                        first_hit_pos, N, V, s.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
+                        ) * s.W * m;
+
+                    updateR(r_st, s, w);
+                }
+            }
+        }
+
+        Sample chosen = r.sample_chosen;
+        float wy = r.total_weight / phat1(
+            chosen.path[1], N, V, chosen.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
             );
 
-        if (shadow_result) {
-            frag_color = vec4(0.0, 0.0, 0.0, 0.0);
-        } else {
-            vec3 F0 = mix(vec3(0.04), m_albedo.rgb, m_metallicity);
-            frag_color = vec4(
-                brdf(
-                    first_hit_normal,
-                    -cam_ray_dir.xyz,
-                    SUN_DIR,
-                    m_albedo.rgb,
-                    F0,
-                    m_roughness,
-                    m_metallicity
-                    ) * max(dot(first_hit_normal, SUN_DIR), 0.0),
-                1.0
-                );
-        }
+        Sample pixel_sample = chosen;
+        pixel_sample.W = wy;
+
+        // Now calculate the visibility term
+        out_samples[width * window_coord.y + window_coord.x] = pixel_sample;
+
+        vec4 shadow_hpos;
+        QueryResult shadow_q;
+        vec3 shadow_normal;
+        uint shadow_mi;
+        bool shadow_result = trace(
+            first_hit_pos + bias_amt * vec4(first_hit_normal, 0.0) * 3.0, pixel_sample.path[2], shadow_hpos, shadow_q, shadow_normal, shadow_mi
+            );
+
+        frag_color.xyz = shadow_result? vec3(0.0) : pixel_sample.W * texture(skybox, pixel_sample.path[2].xyz).xyz * brdf(
+            N,
+            V,
+            pixel_sample.path[2].xyz,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+            );
     } else {
         frag_color = texture(skybox, cam_ray_dir.xyz);
     }
