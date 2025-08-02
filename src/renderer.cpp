@@ -355,6 +355,8 @@ bool Renderer::main_loop(entt::registry& registry, const std::function<void(GLFW
     glUniform1i(17, is_first_frame);
     is_first_frame = false;
 
+    glUniform1f(13, (float)glfwGetTime());
+
     glm::vec3 x_basis = camera.camera_x_basis();
     glm::vec3 y_basis = camera.camera_y_basis();
     glm::vec3 pos = camera.get_pos();

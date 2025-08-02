@@ -15,8 +15,47 @@ layout(location = 9) uniform vec4 m_albedo;
 layout(location = 10) uniform float m_metallicity;
 layout(location = 11) uniform float m_roughness;
 layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
 
 vec3 base_refl = m_albedo.xyz;
+uint seed = floatBitsToUint((additional_seed + frag_pos.x) * frag_pos.y + additional_seed / frag_pos.x);
+
+// https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/, slightly modified
+uint randu() {
+    seed = seed * 747796405u + 2891336453u; // LCG
+    uint word = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u; // PCG Hash
+    return (word >> 22u) ^ word; // IDK
+}
+
+float randf() {
+    // Between 0.0 and 1.0
+    return float(randu()) * uintBitsToFloat(0x2f800000u);
+}
+
+vec2 randv2() {
+    return vec2(randf(), randf());
+}
+
+vec3 randv3() {
+    return vec3(randf(), randf(), randf());
+}
+
+vec3 rand_sphere() {
+    float u = randf();
+    float v = randf();
+
+    float theta = 2.0 * PI * u;
+    float phi = acos(2 * v - 1.0);
+
+    return vec3(sin(theta) * cos(theta), sin(theta) * sin(phi), cos(theta));
+}
+
+vec4 randv4() {
+    return vec4(randf(), randf(), randf(), randf());
+}
 
 struct Node {
     uint mat_id;
