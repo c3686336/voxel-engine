@@ -6,9 +6,13 @@
 #include "common.hpp"
 #include "material.hpp"
 #include "material_list.hpp"
+#include "program.hpp"
+#include "raii.hpp"
 #include "svodag.hpp"
 #include "texture.hpp"
 #include "vertex.hpp"
+#include "vertex_array.hpp"
+#include "window.hpp"
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/glbinding.h>
@@ -44,14 +48,9 @@ public:
         const std::filesystem::path& vs_path,
         const std::filesystem::path& fs_path, int width, int height
     );
-    Renderer(const Renderer& other) = delete;
-    Renderer& operator=(const Renderer& other) = delete;
-    Renderer(Renderer&& other) noexcept;
-    Renderer& operator=(Renderer&& other) noexcept;
 
     bool main_loop(
-        entt::registry& registry,
-        const std::function<void(GLFWwindow*, Camera&)> f
+        entt::registry& registry, const std::function<void(Window&, Camera&)> f
     );
     GLFWwindow* get_window() const;
 
@@ -78,17 +77,15 @@ public:
 
     void use_cubemap(const std::array<std::filesystem::path, 6>&);
 
-    virtual ~Renderer();
-
 private:
     int width;
     int height;
 
-    GLFWwindow* window;
-    gl::GLuint vbo;
-    gl::GLuint ibo;
-    gl::GLuint vao;
-    gl::GLuint program;
+    Window window;
+    Buffer<gl::GL_ARRAY_BUFFER> vbo;
+    VertexArray vao;
+    Buffer<gl::GL_ELEMENT_ARRAY_BUFFER> ibo;
+    Program program;
 
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
@@ -109,8 +106,6 @@ private:
     glm::vec4 albedo{0.3f, 0.5f, 0.6f, 1.0f};
     float metallicity = 0.0;
     float roughness = 0.5;
-
-    bool has_value;
 };
 
 #endif

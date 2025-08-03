@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include <spdlog/spdlog.h>
@@ -48,5 +49,9 @@ load_image(const std::filesystem::path& path, int desired_channels = 4) {
 
     return {image, width, height};
 }
+
+template <auto V> struct value_wrapper {
+    static constexpr auto value = V;
+};
 
 #endif

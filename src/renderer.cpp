@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "components.hpp"
 #include "formatter.hpp"
+#include "raii.hpp"
 #include "renderable.hpp"
 #include "svodag.hpp"
 #include "vertex.hpp"
@@ -104,35 +105,7 @@ void message_callback(
     }
 }
 
-GLFWwindow* create_window(int width, int height) {
-    glfwInit();
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    GLFWwindow* window =
-        glfwCreateWindow(width, height, "voxel engine", NULL, NULL);
-
-    if (window == nullptr) {
-        SPDLOG_CRITICAL("Could not create the window");
-        exit(1);
-    }
-
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
-    glfwSwapInterval(0);
-
-    glfwShowWindow(window);
-
-    SPDLOG_INFO("Created the window");
-
-    return window;
-}
-
 void initialize_gl(int width, int height) {
-    glbinding::initialize(glfwGetProcAddress);
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_FRAMEBUFFER_SRGB);
     glDebugMessageCallback(message_callback, nullptr);
@@ -222,16 +195,27 @@ Renderer::Renderer(
     const std::filesystem::path& vs_path, const std::filesystem::path& fs_path,
     int width, int height
 )
-    : width(width), height(height), reservoir_index(0), camera(), cubemap(),
-      has_value(true) {
-    window = create_window(width, height);
-    initialize_gl(width, height);
+    : width(width), height(height), window(width, height, "asdf"), vbo(), vao(),
+      ibo(), program(), reservoir_index(0), camera(), cubemap() {
+    ensure_glbinding();
 
-    vbo = create_vbo();
-    ibo = create_ibo();
-    vao = create_vao();
-    bind_buffers(vao, vbo, ibo);
-    program = load_shaders(vs_path, fs_path);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+
+    vbo = Buffer<gl::GL_ARRAY_BUFFER>(
+        sizeof(Vertex) * 3, GL_DYNAMIC_STORAGE_BIT, fullscreen_quad
+    );
+    ibo = Buffer<gl::GL_ELEMENT_ARRAY_BUFFER>(
+        sizeof(uint32_t) * 3, GL_DYNAMIC_STORAGE_BIT, fullscreen_indices
+    );
+    vao = VertexArray(
+        vbo, ibo, sizeof(Vertex),
+        {{3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos), 0}}
+    );
+
+    program = Program{
+        Shader<gl::GL_VERTEX_SHADER>(vs_path),
+        Shader<gl::GL_FRAGMENT_SHADER>(fs_path)
+    };
 
     SPDLOG_INFO("Creating SSBO");
     svodag_ssbo = AppendBuffer<SerializedNode, GL_SHADER_STORAGE_BUFFER>{10000};
@@ -245,74 +229,11 @@ Renderer::Renderer(
         ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100}
     };
 
-    program = load_shaders(vs_path, fs_path);
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init();
-}
-
-Renderer::Renderer(Renderer&& other) noexcept {
-    is_first_frame = other.is_first_frame;
-    window = other.window;
-    vbo = other.vbo;
-    ibo = other.vbo;
-    vao = other.vao;
-    program = other.program;
-    metadata_ssbo = std::move(other.metadata_ssbo);
-    svodag_ssbo = std::move(other.svodag_ssbo);
-    prev_reservoirs = std::move(other.prev_reservoirs);
-    reservoir_index = other.reservoir_index;
-
-    camera = other.camera;
-
-    has_value = other.has_value;
-    other.has_value = false;
-}
-
-Renderer& Renderer::operator=(Renderer&& other) noexcept {
-    using std::swap;
-
-    swap(is_first_frame, other.is_first_frame);
-    swap(window, other.window);
-    swap(vbo, other.vbo);
-    swap(ibo, other.ibo);
-    swap(vao, other.vao);
-    swap(program, other.program);
-    swap(svodag_ssbo, other.svodag_ssbo);
-    swap(metadata_ssbo, other.metadata_ssbo);
-    swap(prev_reservoirs, other.prev_reservoirs);
-    swap(reservoir_index, other.reservoir_index);
-
-    camera = other.camera; // Just copy it
-
-    swap(has_value, other.has_value);
-
-    return *this;
-}
-
-Renderer::~Renderer() {
-    if (!has_value)
-        return;
-
-    SPDLOG_INFO("Destroying Renderer");
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteProgram(program);
-
-    glfwTerminate();
+    ensure_imgui(window.get());
 }
 
 bool Renderer::main_loop(
-    entt::registry& registry, const std::function<void(GLFWwindow*, Camera&)> f
+    entt::registry& registry, const std::function<void(Window&, Camera&)> f
 ) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -342,8 +263,8 @@ bool Renderer::main_loop(
 
     metadata_ssbo.upload();
 
-    glUseProgram(program);
-    glBindVertexArray(vao);
+    program.use();
+    vao.bind();
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
     materials.bind(6);
@@ -390,14 +311,14 @@ bool Renderer::main_loop(
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    glfwSwapBuffers(window);
+    glfwSwapBuffers(window.get());
 
     metadata_ssbo.lock();
 
-    return glfwWindowShouldClose(window);
+    return glfwWindowShouldClose(window.get());
 }
 
-GLFWwindow* Renderer::get_window() const { return window; }
+GLFWwindow* Renderer::get_window() const { return window.get(); }
 
 void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
     std::array<std::vector<std::byte>, 6> images;
