@@ -49,6 +49,19 @@ public:
             glGenerateTextureMipmap(texture);
         }
     }
+
+    inline Texture2D(
+        gl::GLsizei levels, gl::GLenum internal_format, gl::GLenum format,
+        gl::GLsizei width, gl::GLsizei height, bool generate_mips
+    ) {
+        using namespace gl;
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+        glTextureStorage2D(texture, levels, internal_format, width, height);
+        if (generate_mips) {
+            glGenerateTextureMipmap(texture);
+        }
+    }
 };
 
 class CubeMap : public Texture {
