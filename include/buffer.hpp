@@ -15,11 +15,14 @@ template <gl::GLenum type> class Buffer {
     // A simple, owning buffer
 public:
     Buffer() noexcept : buffer(0) {};
-    Buffer(size_t size, gl::BufferStorageMask flags) noexcept {
+
+    Buffer(
+        size_t size, gl::BufferStorageMask flags, const void* data = nullptr
+    ) noexcept {
         using namespace gl;
         glGenBuffers(1, &buffer);
         glBindBuffer(type, buffer);
-        glNamedBufferStorage(buffer, size, nullptr, flags);
+        glNamedBufferStorage(buffer, size, data, flags);
     }
 
     virtual ~Buffer() noexcept { gl::glDeleteBuffers(1, &buffer); }
@@ -36,13 +39,15 @@ public:
         return *this;
     }
 
-    virtual void bind(gl::GLuint binding_index) {
+    virtual void bind(gl::GLuint binding_index) const {
         gl::glBindBufferBase(type, binding_index, buffer);
     }
 
-    bool owns() { return buffer != 0; }
+    bool owns() const { return buffer != 0; }
 
-protected:
+    gl::GLuint get() const { return buffer; }
+
+private:
     gl::GLuint buffer;
 };
 
@@ -93,7 +98,7 @@ public:
         using namespace gl;
 
         unsigned char* pointer = (unsigned char*)glMapNamedBufferRange(
-            this->buffer, 0, n * allocation_size,
+            this->get(), 0, n * allocation_size,
             GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT
         );
 
@@ -113,7 +118,7 @@ public:
 
     void bind(gl::GLuint binding_index) {
         gl::glBindBufferRange(
-            type, binding_index, this->buffer, allocation_size * index,
+            type, binding_index, this->get(), allocation_size * index,
             allocation_size
         );
     }
@@ -188,7 +193,7 @@ public:
 
     void upload() {
         gl::glNamedBufferSubData(
-            this->buffer, 0, cpu_buffer.size() * sizeof(T), cpu_buffer.data()
+            this->get(), 0, cpu_buffer.size() * sizeof(T), cpu_buffer.data()
         );
 
         used = cpu_buffer.size() * sizeof(T);
