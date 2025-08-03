@@ -41,10 +41,8 @@ int main(int argc, char** argv) {
 
     glfwInit();
 
-    Renderer renderer(
-        std::filesystem::path("simple.vert"),
-        std::filesystem::path("simple.frag"), 1920, 1080
-    );
+    Renderer renderer(1920, 1080);
+
     renderer.use_cubemap(
         {"res/right.jpg", "res/left.jpg", "res/top.jpg", "res/bottom.jpg",
          "res/front.jpg", "res/back.jpg"}

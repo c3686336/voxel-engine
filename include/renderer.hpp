@@ -44,10 +44,7 @@ typedef SimpleMaterial Material;
 
 class Renderer {
 public:
-    Renderer(
-        const std::filesystem::path& vs_path,
-        const std::filesystem::path& fs_path, int width, int height
-    );
+    Renderer(int width, int height);
 
     bool main_loop(
         entt::registry& registry, const std::function<void(Window&, Camera&)> f
@@ -86,6 +83,7 @@ private:
     VertexArray vao;
     Buffer<gl::GL_ELEMENT_ARRAY_BUFFER> ibo;
     Program program;
+    Program compute;
 
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
@@ -99,6 +97,7 @@ private:
     Camera camera;
 
     CubeMap cubemap;
+    Texture2D quad_texture;
 
     float bias_amt = 0.00044f;
     uint32_t model_select = 0;

@@ -87,7 +87,7 @@ void message_callback(
 
     switch (severity) {
     case GL_DEBUG_SEVERITY_NOTIFICATION:
-        // SPDLOG_INFO(message);
+        SPDLOG_INFO(message);
         break;
     case GL_DEBUG_SEVERITY_LOW:
         SPDLOG_WARN(message);
@@ -105,13 +105,10 @@ void message_callback(
     }
 }
 
-
-Renderer::Renderer(
-    const std::filesystem::path& vs_path, const std::filesystem::path& fs_path,
-    int width, int height
-)
+Renderer::Renderer(int width, int height)
     : width(width), height(height), window(width, height, "asdf"), vbo(), vao(),
-      ibo(), program(), reservoir_index(0), camera(), cubemap() {
+      ibo(), program(), compute(), reservoir_index(0), camera(), cubemap(),
+      quad_texture() {
     ensure_glbinding();
 
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -128,8 +125,14 @@ Renderer::Renderer(
     );
 
     program = Program{
-        Shader<gl::GL_VERTEX_SHADER>(vs_path),
-        Shader<gl::GL_FRAGMENT_SHADER>(fs_path)
+        Shader<gl::GL_VERTEX_SHADER>(std::filesystem::path("simple.vert")),
+        Shader<gl::GL_FRAGMENT_SHADER>(
+            std::filesystem::path("draw_texture.frag")
+        )
+    };
+
+    compute = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("restirdi.comp"))
     };
 
     SPDLOG_INFO("Creating SSBO");
@@ -144,14 +147,17 @@ Renderer::Renderer(
         ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100}
     };
 
+    quad_texture = Texture2D(1, GL_RGBA32F, GL_RGBA, width, height, false);
+
     ensure_imgui(window.get());
 }
 
 bool Renderer::main_loop(
     entt::registry& registry, const std::function<void(Window&, Camera&)> f
 ) {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    SPDLOG_INFO("Frame start");
 
     glfwPollEvents();
 
@@ -178,8 +184,8 @@ bool Renderer::main_loop(
 
     metadata_ssbo.upload();
 
-    program.use();
-    vao.bind();
+    compute.use();
+    // vao.bind();
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
     materials.bind(6);
@@ -205,6 +211,7 @@ bool Renderer::main_loop(
 
     glUniform3fv(5, 1, glm::value_ptr(x_basis));
     glUniform3fv(4, 1, glm::value_ptr(y_basis));
+    SPDLOG_INFO("asdf1");
 
     glUniform1ui(8, metadata_ssbo.data.size());
 
@@ -220,13 +227,31 @@ bool Renderer::main_loop(
     glUniform1f(11, roughness);
 
     ImGui::End();
+    SPDLOG_INFO("asdf2");
+
+    quad_texture.bind_image(1, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glDispatchCompute(width / 8, height / 4, 1);
+    // glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    glFinish();
+
+    program.use();
+    vao.bind();
+    quad_texture.bind(0);
+    SPDLOG_INFO("asdf3");
 
     glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    glFinish();
+
+    SPDLOG_INFO("asdf4");
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+    SPDLOG_INFO("asdf5");
+
     glfwSwapBuffers(window.get());
+
+    SPDLOG_INFO("asdf6");
 
     metadata_ssbo.lock();
 
