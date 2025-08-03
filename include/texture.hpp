@@ -19,6 +19,9 @@ public:
     virtual void parameteri(gl::GLenum property_name, gl::GLint parameter);
     virtual void parameterf(gl::GLenum property_name, gl::GLfloat parameter);
     virtual void bind(gl::GLuint unit);
+    virtual void bind_image(
+        gl::GLuint unit, gl::GLint level, gl::GLenum access, gl::GLenum format
+    );
 
     Texture(const Texture&) = delete;
     Texture& operator=(const Texture&) = delete;

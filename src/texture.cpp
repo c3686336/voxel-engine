@@ -15,6 +15,13 @@ Texture& Texture::operator=(Texture&& other) noexcept {
 }
 
 void Texture::bind(gl::GLuint unit) { gl::glBindTextureUnit(unit, texture); }
+void Texture::bind_image(
+    gl::GLuint unit, gl::GLint level, gl::GLenum access, gl::GLenum format
+) {
+    gl::glBindImageTexture(
+        unit, texture, level, gl::GL_FALSE, 0, access, format
+    );
+}
 
 void Texture::parameteri(gl::GLenum property_name, gl::GLint parameter) {
     gl::glTextureParameteri(texture, property_name, parameter);
