@@ -15,8 +15,8 @@ public:
         : shader(gl::glCreateShader(type)) {
         std::string source = load_file(shader_path);
         const char* source_buf = source.c_str();
-        const int source_len = source.length();
-        gl::glShaderSource(shader, 1, &source_buf, &source_len);
+        gl::glShaderSource(shader, 1, &source_buf, NULL);
+        gl::glCompileShader(shader);
     }
     ~Shader() noexcept { gl::glDeleteShader(shader); }
 
