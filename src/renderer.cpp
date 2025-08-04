@@ -107,8 +107,7 @@ void message_callback(
 
 Renderer::Renderer(int width, int height)
     : width(width), height(height), window(width, height, "asdf"), vbo(), vao(),
-      ibo(), program(), compute(), reservoir_index(0), camera(), cubemap(),
-      quad_texture() {
+      ibo(), reservoir_index(0), camera(), cubemap(), quad_texture() {
     ensure_glbinding();
 
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -124,17 +123,6 @@ Renderer::Renderer(int width, int height)
         {{3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos), 0}}
     );
 
-    program = Program{
-        Shader<gl::GL_VERTEX_SHADER>(std::filesystem::path("simple.vert")),
-        Shader<gl::GL_FRAGMENT_SHADER>(
-            std::filesystem::path("draw_texture.frag")
-        )
-    };
-
-    compute = Program{
-        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("restirdi.comp"))
-    };
-
     SPDLOG_INFO("Creating SSBO");
     svodag_ssbo = AppendBuffer<SerializedNode, GL_SHADER_STORAGE_BUFFER>{10000};
     metadata_ssbo = VectorBuffer<SvodagMetaData, GL_SHADER_STORAGE_BUFFER>{100};
@@ -143,8 +131,9 @@ Renderer::Renderer(int width, int height)
     svodag_ssbo.push_back(SerializedNode{});
 
     prev_reservoirs = {
-        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100},
-        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 100}
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 200},
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 200},
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 200}
     };
 
     quad_texture = Texture2D(1, GL_RGBA32F, GL_RGBA, width, height, false);
@@ -157,7 +146,6 @@ bool Renderer::main_loop(
 ) {
     // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     // glClear(GL_COLOR_BUFFER_BIT);
-    SPDLOG_INFO("Frame start");
 
     glfwPollEvents();
 
@@ -184,20 +172,92 @@ bool Renderer::main_loop(
 
     metadata_ssbo.upload();
 
-    compute.use();
-    // vao.bind();
+    ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
+    ImGui::SliderFloat4("Albedo", glm::value_ptr(albedo), 0.0f, 1.0f);
+    ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
+    ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
+    ImGui::Checkbox("Reuse?", &reuse);
+    ImGui::Checkbox("Shade?", &shade);
+    ImGui::End();
+
+    restir_first_hit.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 4, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    restir_initial_samples.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 4, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    restir_reuse.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 4, 1);
+    glMemoryBarrier(
+        GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+    );
+    reservoir_index = (reservoir_index + 1) % 2;
+
+    // Make sure to flip the buffers every time I read & write to it.
+
+    if (shade) {
+        restir_shade.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 4, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    }
+
+    quad_renderer.use();
+    vao.bind();
+    quad_texture.bind(0);
+
+    glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    glfwSwapBuffers(window.get());
+
+    metadata_ssbo.lock();
+
+    is_first_frame = false;
+    return glfwWindowShouldClose(window.get());
+}
+
+GLFWwindow* Renderer::get_window() const { return window.get(); }
+
+void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
+    std::array<std::vector<std::byte>, 6> images;
+    std::array<std::span<std::byte>, 6> spans;
+    int result_width;
+
+    for (int i = 0; i < 6; i++) {
+        auto [image, img_width, img_height] = load_image(path[i]);
+
+        images[i] = std::move(image);
+        spans[i] = images[i];
+
+        result_width = img_width;
+    }
+
+    cubemap = CubeMap(
+        spans, gl::GLenum::GL_SRGB8_ALPHA8, gl::GLenum::GL_RGBA, result_width
+    );
+}
+
+void Renderer::bind_everything() {
     svodag_ssbo.bind(3);
     metadata_ssbo.bind(2);
     materials.bind(6);
     cubemap.bind(0);
     prev_reservoirs[reservoir_index].bind(14);
     prev_reservoirs[(reservoir_index + 1) % 2].bind(18);
-    reservoir_index = (reservoir_index + 1) % 2;
+    prev_reservoirs[2].bind(19);
     glUniform1i(12, 0);
     glUniform1i(15, width);
     glUniform1i(16, height);
     glUniform1i(17, is_first_frame);
-    is_first_frame = false;
+    glUniform1i(20, reuse);
 
     glUniform1f(13, (float)glfwGetTime());
 
@@ -211,69 +271,14 @@ bool Renderer::main_loop(
 
     glUniform3fv(5, 1, glm::value_ptr(x_basis));
     glUniform3fv(4, 1, glm::value_ptr(y_basis));
-    SPDLOG_INFO("asdf1");
 
     glUniform1ui(8, metadata_ssbo.data.size());
 
-    ImGui::SliderFloat("Bias Amount", &bias_amt, 0.0f, .01f, "%.5f");
     glUniform1f(6, bias_amt);
-
-    ImGui::SliderFloat4("Albedo", glm::value_ptr(albedo), 0.0f, 1.0f);
-    ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
-    ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
 
     glUniform4fv(9, 1, glm::value_ptr(albedo));
     glUniform1f(10, metallicity);
     glUniform1f(11, roughness);
 
-    ImGui::End();
-    SPDLOG_INFO("asdf2");
-
     quad_texture.bind_image(1, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glDispatchCompute(width / 8, height / 4, 1);
-    // glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    glFinish();
-
-    program.use();
-    vao.bind();
-    quad_texture.bind(0);
-    SPDLOG_INFO("asdf3");
-
-    glDrawElements(gl::GLenum::GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
-    glFinish();
-
-    SPDLOG_INFO("asdf4");
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    SPDLOG_INFO("asdf5");
-
-    glfwSwapBuffers(window.get());
-
-    SPDLOG_INFO("asdf6");
-
-    metadata_ssbo.lock();
-
-    return glfwWindowShouldClose(window.get());
-}
-
-GLFWwindow* Renderer::get_window() const { return window.get(); }
-
-void Renderer::use_cubemap(const std::array<std::filesystem::path, 6>& path) {
-    std::array<std::vector<std::byte>, 6> images;
-    std::array<std::span<std::byte>, 6> spans;
-    int width;
-
-    for (int i = 0; i < 6; i++) {
-        auto [image, img_width, img_height] = load_image(path[i]);
-
-        images[i] = std::move(image);
-        spans[i] = images[i];
-
-        width = img_width;
-    }
-
-    cubemap =
-        CubeMap(spans, gl::GLenum::GL_SRGB8_ALPHA8, gl::GLenum::GL_RGBA, width);
 }

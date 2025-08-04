@@ -39,12 +39,12 @@ foreach shader : shaders
   shaders_str += fs.name(shader)
 endforeach
 
-validate_shaders = custom_target(
-  'Validate Shaders',
-  input: shaders,
-  output: ['asdf'],
-  command: ['glslang', '@INPUT@']
-)
+# validate_shaders = custom_target(
+#   'Validate & Shaders',
+#   input: shaders,
+#   output: ['asdf'],
+#   command: ['glslang', '@INPUT@']
+# )
 
 copy_shaders = custom_target(
   'Copy Shaders',
@@ -53,7 +53,7 @@ copy_shaders = custom_target(
   command: ['cp', '@INPUT@', '@BUILD_ROOT@']
 )
 
-executable('voxel-engine', main_src + voxel_engine_srcs + validate_shaders + copy_shaders + resource_copies, include_directories: inc, dependencies: deps)
+executable('voxel-engine', main_src + voxel_engine_srcs + copy_shaders + resource_copies, include_directories: inc, dependencies: deps)
 
 executable('raymarcher', raymarcher_src + voxel_engine_srcs, include_directories: inc, dependencies: deps)
 

@@ -1,0 +1,60 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
+layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
+
+#include "common.comp"
+
+void main() {
+    vec4 frag_color = vec4(0.0);
+    vec2 frag_pos = vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0;
+
+    vec4 cam_ray_origin = vec4(camera_pos, 1.0);
+    vec4 cam_ray_dir = normalize(vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0));
+
+    vec4 first_hit_pos;
+    QueryResult first_hit_query;
+    vec3 first_hit_normal;
+    uint first_hit_index;
+
+    bool result = trace(
+            cam_ray_origin, cam_ray_dir,
+            first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
+        );
+
+    Sample s = empty_sample();
+
+    s.path[0] = cam_ray_origin;
+    s.view_dir[0] = -cam_ray_dir.xyz;
+
+    if (result) {
+        s.path[1] = first_hit_pos;
+        s.normal[0] = first_hit_normal;
+        s.albedo[0] = m_albedo.xyz;
+        s.metallicity[0] = m_metallicity;
+        s.roughness[0] = m_roughness;
+    } else {
+        for (int i = 1; i < s.path.length(); i++) {
+            s.path[i] = cam_ray_dir;
+        }
+    }
+
+    pixel_sample[global_index] = s;
+}

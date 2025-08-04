@@ -6,7 +6,10 @@
 #include <glbinding/gl/gl.h>
 
 #include <filesystem>
+#include <regex>
 #include <type_traits>
+
+static const std::regex include_regex{"#include \"(.+)\""};
 
 template <gl::GLenum type> class Shader {
 public:
@@ -14,9 +17,40 @@ public:
     Shader(const std::filesystem::path& shader_path) noexcept
         : shader(gl::glCreateShader(type)) {
         std::string source = load_file(shader_path);
+        std::stringstream source_stream(source);
+        std::string line;
+        std::ostringstream preprocessed;
+        int i = 2;
+
+        while (std::getline(source_stream, line)) {
+            std::smatch match;
+            if (std::regex_search(line, match, include_regex)) {
+                preprocessed << "#line 1 1" << '\n';
+                preprocessed << load_file(std::filesystem::path(match[1]));
+                preprocessed << "#line " << i << " 0" << '\n';
+            } else if (line ==
+                       "#extension GL_ARB_shading_language_include : require") {
+                preprocessed << "\n\n";
+            } else {
+                preprocessed << line << '\n';
+            }
+
+            i++;
+        }
+
+        source = preprocessed.str();
+
         const char* source_buf = source.c_str();
         gl::glShaderSource(shader, 1, &source_buf, NULL);
         gl::glCompileShader(shader);
+
+        int buflen;
+        gl::glGetShaderiv(shader, gl::GLenum::GL_INFO_LOG_LENGTH, &buflen);
+        std::unique_ptr<char[]> buf = std::make_unique<char[]>(buflen);
+        gl::glGetShaderInfoLog(shader, buflen, &buflen, buf.get());
+
+        SPDLOG_INFO("Filename: {}", shader_path.string());
+        SPDLOG_INFO(buf.get());
     }
     ~Shader() noexcept { gl::glDeleteShader(shader); }
 
@@ -53,6 +87,13 @@ public:
         attach(std::forward<Args>(args)...);
 
         gl::glLinkProgram(program);
+
+        int buflen;
+        gl::glGetProgramiv(program, gl::GLenum::GL_INFO_LOG_LENGTH, &buflen);
+        std::unique_ptr<char[]> buf = std::make_unique<char[]>(buflen);
+        gl::glGetProgramInfoLog(program, buflen, &buflen, buf.get());
+
+        SPDLOG_INFO(buf.get());
     }
 
     ~Program() noexcept;
