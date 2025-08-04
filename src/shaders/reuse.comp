@@ -194,12 +194,8 @@ void main() {
     prev_pixel_sample[global_index] = result;
 
     if (s.path[1].w == 0.0) {} else {
-        vec4 shadow_hpos;
-        QueryResult shadow_q;
-        vec3 shadow_normal;
-        uint shadow_mi;
-        bool shadow_result = trace(
-                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+        bool shadow_result = trace_shadow(
+                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
             );
 
         vec3 frag_color =
