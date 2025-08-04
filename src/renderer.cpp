@@ -176,8 +176,7 @@ bool Renderer::main_loop(
     ImGui::SliderFloat4("Albedo", glm::value_ptr(albedo), 0.0f, 1.0f);
     ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
     ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
-    ImGui::Checkbox("Reuse?", &reuse);
-    ImGui::Checkbox("Shade?", &shade);
+    ImGui::Checkbox("Reuse?", &temporal_reuse);
     ImGui::End();
 
     restir_first_hit.use();
@@ -241,7 +240,7 @@ void Renderer::bind_everything() {
     glUniform1i(15, width);
     glUniform1i(16, height);
     glUniform1i(17, is_first_frame);
-    glUniform1i(20, reuse);
+    glUniform1i(20, temporal_reuse);
 
     glUniform1f(13, (float)glfwGetTime());
 

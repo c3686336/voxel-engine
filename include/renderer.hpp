@@ -125,8 +125,7 @@ private:
     float metallicity = 0.0;
     float roughness = 0.5;
 
-    bool reuse = true;
-    bool shade = true;
+    bool temporal_reuse = true;
 };
 
 #endif

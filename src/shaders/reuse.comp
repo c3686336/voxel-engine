@@ -24,18 +24,20 @@ layout(location = 13) uniform float additional_seed;
 layout(location = 15) uniform int width;
 layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
-layout(location = 20) uniform bool reuse;
+layout(location = 20) uniform bool t_reuse;
 
 const int M = N_NEIGHBORS + 1 + (is_first_frame ? 0 : 1);
 
 #include "common.comp"
+
+#define PHAT phat1
 
 void main() {
     // TODO: Account for camera and object movement
 
     Sample current = pixel_sample[global_index];
 
-    if (current.path[1].w == 0.0 || !reuse) {
+    if (current.path[1].w == 0.0) {
         imageStore(out_img, tcoord, texture(skybox, current.path[1].xyz)); // 0 bounce
         prev_pixel_sample[global_index] = current;
         return;
@@ -44,7 +46,7 @@ void main() {
     float mis_canonical = 0.0;
     Reservoir r = new_reservoir();
 
-    float p11 = phat1(
+    float p11 = PHAT(
             current.path[1],
             current.normal[0],
             current.view_dir[0],
@@ -79,7 +81,7 @@ void main() {
             continue;
         }
 
-        float p1x = phat1(
+        float p1x = PHAT(
                 current.path[1],
                 current.normal[0],
                 current.view_dir[0],
@@ -89,7 +91,7 @@ void main() {
                 current.metallicity[0]
             ); // phat on current domain, towards neighbor's sample
 
-        float pix = phat1(
+        float pix = PHAT(
                 neighbor.path[1],
                 neighbor.normal[0],
                 neighbor.view_dir[0],
@@ -100,7 +102,7 @@ void main() {
             ); // phat on neighbor's domain, towards neighbor's sample
         // TODO: Pre-compute this on the last stage
 
-        float pi1 = phat1(
+        float pi1 = PHAT(
                 neighbor.path[1],
                 neighbor.normal[0],
                 neighbor.view_dir[0],
@@ -127,8 +129,8 @@ void main() {
 
     // Temporal reuse
     Sample temporal = prev_pixel_sample[global_index];
-    if (!is_first_frame && temporal.path[1].w != 0.0 && false) {
-        float p1x = phat1(
+    if (!is_first_frame && temporal.path[1].w != 0.0 && t_reuse) {
+        float p1x = PHAT(
                 current.path[1],
                 current.normal[0],
                 current.view_dir[0],
@@ -138,7 +140,7 @@ void main() {
                 current.metallicity[0]
             ); // phat on current domain, towards previous sample
 
-        float pix = phat1(
+        float pix = PHAT(
                 temporal.path[1],
                 temporal.normal[0],
                 temporal.view_dir[0],
@@ -149,7 +151,7 @@ void main() {
             ); // phat on previous domain, towards previous sample
         // TODO: Pre-compute this on the last stage
 
-        float pi1 = phat1(
+        float pi1 = PHAT(
                 temporal.path[1],
                 temporal.normal[0],
                 temporal.view_dir[0],
@@ -178,7 +180,7 @@ void main() {
     updateR(r, current, mis_canonical * p11 * current.W);
 
     Sample result = r.sample_chosen;
-    result.W = r.total_weight / phat1(
+    result.W = r.total_weight / PHAT(
                 result.path[1],
                 result.normal[0],
                 result.view_dir[0],
