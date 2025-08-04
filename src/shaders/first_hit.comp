@@ -100,5 +100,15 @@ void main() {
                 ris_result.path[1], ris_result.normal[0], ris_result.view_dir[0], -ris_result.view_dir[1], ris_result.albedo[0], ris_result.roughness[0], ris_result.metallicity[0]
             );
 
+    vec4 shadow_hpos;
+    QueryResult shadow_q;
+    vec3 shadow_normal;
+    uint shadow_mi;
+    bool shadow_result = trace(
+            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+        );
+
+    r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
+
     pixel_sample[global_index] = r.sample_chosen;
 }
