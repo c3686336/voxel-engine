@@ -3,13 +3,12 @@
 
 #define N_SAMPLES 32
 
-const int N_NEIGHBORS = 5;
-const int TAXI_RADIUS = 128; // Power of two
-const bool do_temporal = true;
+const int N_NEIGHBORS = 3;
+const int TAXI_RADIUS = 128;
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
-layout(rgba32f, binding = 1) writeonly uniform image2D in_img;
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
 
 layout(location = 1) uniform vec3 camera_pos;
 layout(location = 2) uniform vec3 camera_dir;
@@ -27,7 +26,7 @@ layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
 layout(location = 20) uniform bool reuse;
 
-const int M = N_NEIGHBORS + int(do_temporal) + (is_first_frame ? 0 : 1);
+const int M = N_NEIGHBORS + 1 + (is_first_frame ? 0 : 1);
 
 #include "common.comp"
 
@@ -35,9 +34,10 @@ void main() {
     // TODO: Account for camera and object movement
 
     Sample current = pixel_sample[global_index];
-    pixel_sample_out[global_index] = current;
 
     if (current.path[1].w == 0.0 || !reuse) {
+        imageStore(out_img, tcoord, texture(skybox, current.path[1].xyz)); // 0 bounce
+        prev_pixel_sample[global_index] = current;
         return;
     }
 
@@ -89,7 +89,7 @@ void main() {
                 current.metallicity[0]
             ); // phat on current domain, towards neighbor's sample
 
-        float pix = neighbor.path[1].w == 0.0 ? 1.0 : phat1(
+        float pix = phat1(
                 neighbor.path[1],
                 neighbor.normal[0],
                 neighbor.view_dir[0],
@@ -100,7 +100,7 @@ void main() {
             ); // phat on neighbor's domain, towards neighbor's sample
         // TODO: Pre-compute this on the last stage
 
-        float pi1 = neighbor.path[1].w == 0.0 ? 1.0 : phat1(
+        float pi1 = phat1(
                 neighbor.path[1],
                 neighbor.normal[0],
                 neighbor.view_dir[0],
@@ -126,9 +126,8 @@ void main() {
     }
 
     // Temporal reuse
-    if (do_temporal && !is_first_frame) {
-        Sample temporal = prev_pixel_sample[global_index];
-
+    Sample temporal = prev_pixel_sample[global_index];
+    if (!is_first_frame && temporal.path[1].w != 0.0 && false) {
         float p1x = phat1(
                 current.path[1],
                 current.normal[0],
@@ -139,7 +138,7 @@ void main() {
                 current.metallicity[0]
             ); // phat on current domain, towards previous sample
 
-        float pix = temporal.path[1].w == 0.0 ? 0.0 : phat1(
+        float pix = phat1(
                 temporal.path[1],
                 temporal.normal[0],
                 temporal.view_dir[0],
@@ -150,7 +149,7 @@ void main() {
             ); // phat on previous domain, towards previous sample
         // TODO: Pre-compute this on the last stage
 
-        float pi1 = temporal.path[1].w == 0.0 ? 0.0 : phat1(
+        float pi1 = phat1(
                 temporal.path[1],
                 temporal.normal[0],
                 temporal.view_dir[0],
@@ -189,5 +188,30 @@ void main() {
                 result.metallicity[0]
             );
 
-    pixel_sample_out[global_index] = result;
+    Sample s = result;
+    prev_pixel_sample[global_index] = result;
+
+    if (s.path[1].w == 0.0) {} else {
+        vec4 shadow_hpos;
+        QueryResult shadow_q;
+        vec3 shadow_normal;
+        uint shadow_mi;
+        bool shadow_result = trace(
+                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+            );
+
+        vec3 frag_color =
+            shadow_result ?
+            vec3(0.0) :
+            s.W * texture(skybox, s.path[2].xyz).xyz * brdf(
+                    s.normal[0],
+                    s.view_dir[0],
+                    -s.view_dir[1],
+                    s.albedo[0],
+                    s.roughness[0],
+                    s.metallicity[0]
+                );
+
+        imageStore(out_img, tcoord, vec4(frag_color, 1.0));
+    }
 }

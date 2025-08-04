@@ -23,7 +23,7 @@ layout(location = 17) uniform bool is_first_frame;
 #include "common.comp"
 
 void main() {
-    Sample s = pixel_sample_out[global_index];
+    Sample s = prev_pixel_sample[global_index];
 
     // When generalizing to GI, this is the stopping criteria for the loop
     if (s.path[1].w == 0.0) {

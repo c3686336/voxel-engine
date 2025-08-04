@@ -185,27 +185,12 @@ bool Renderer::main_loop(
     glDispatchCompute(width / 8, height / 4, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    restir_initial_samples.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 4, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
     restir_reuse.use();
     bind_everything();
     glDispatchCompute(width / 8, height / 4, 1);
     glMemoryBarrier(
         GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
     );
-    reservoir_index = (reservoir_index + 1) % 2;
-
-    // Make sure to flip the buffers every time I read & write to it.
-
-    if (shade) {
-        restir_shade.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 4, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    }
 
     quad_renderer.use();
     vao.bind();
@@ -250,9 +235,8 @@ void Renderer::bind_everything() {
     metadata_ssbo.bind(2);
     materials.bind(6);
     cubemap.bind(0);
-    prev_reservoirs[reservoir_index].bind(14);
-    prev_reservoirs[(reservoir_index + 1) % 2].bind(18);
-    prev_reservoirs[2].bind(19);
+    prev_reservoirs[0].bind(14);
+    prev_reservoirs[1].bind(18);
     glUniform1i(12, 0);
     glUniform1i(15, width);
     glUniform1i(16, height);

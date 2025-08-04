@@ -127,10 +127,6 @@ layout(std430, binding = 18) buffer pixel_sample_buf {
     Sample pixel_sample[];
 };
 
-layout(std430, binding = 19) buffer pixel_sample_buf_out {
-    Sample pixel_sample_out[];
-};
-
 vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
     // https://tavianator.com/2015/ray_box_nan.html
     precise vec3 t1 = (cor1 - pos) * dir_inv;
