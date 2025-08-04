@@ -95,20 +95,18 @@ void main() {
         updateR(r, s, w);
     }
 
-    Sample ris_result = r.sample_chosen;
-    ris_result.W = r.total_weight / phat1(
-                ris_result.path[1], ris_result.normal[0], ris_result.view_dir[0], -ris_result.view_dir[1], ris_result.albedo[0], ris_result.roughness[0], ris_result.metallicity[0]
-            );
+    float sample_phat = phat1(
+            r.sample_chosen.path[1], r.sample_chosen.normal[0], r.sample_chosen.view_dir[0], -r.sample_chosen.view_dir[1], r.sample_chosen.albedo[0], r.sample_chosen.roughness[0], r.sample_chosen.metallicity[0]
+        );
+    r.sample_chosen.W = r.total_weight / sample_phat;
+    r.sample_chosen.sample_phat = sample_phat;
 
-    vec4 shadow_hpos;
-    QueryResult shadow_q;
-    vec3 shadow_normal;
-    uint shadow_mi;
-    bool shadow_result = trace(
-            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+    bool shadow_result = trace_shadow(
+            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
         );
 
     r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
+    r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
 
     pixel_sample[global_index] = r.sample_chosen;
 }
