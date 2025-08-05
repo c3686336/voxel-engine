@@ -26,7 +26,7 @@ layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
 layout(location = 20) uniform bool t_reuse;
 
-const int M = N_NEIGHBORS + 1 + (is_first_frame ? 0 : 1);
+const int M = N_NEIGHBORS + 1;
 
 #include "common.comp"
 
@@ -77,9 +77,9 @@ void main() {
                 current.normal[0],
                 current.view_dir[0],
                 -neighbor.view_dir[1],
-                current.albedo[0],
-                current.roughness[0],
-                current.metallicity[0]
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
             ); // phat on current domain, towards neighbor's sample
 
         float pix = neighbor.sample_phat;
@@ -89,9 +89,9 @@ void main() {
                 neighbor.normal[0],
                 neighbor.view_dir[0],
                 -current.view_dir[1],
-                neighbor.albedo[0],
-                neighbor.roughness[0],
-                neighbor.metallicity[0]
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
             ); // phat on neighbor's domain, towards current sample
 
         float m = pix / (p1x / float(M - 1) + pix); // pairwise mis
@@ -110,43 +110,43 @@ void main() {
     }
 
     // Temporal reuse
-    Sample temporal = prev_pixel_sample[global_index];
-    if (!is_first_frame && temporal.path[1].w != 0.0 && t_reuse) {
-        float p1x = PHAT(
-                current.path[1],
-                current.normal[0],
-                current.view_dir[0],
-                -temporal.view_dir[1].xyz,
-                current.albedo[0],
-                current.roughness[0],
-                current.metallicity[0]
-            ); // phat on current domain, towards previous sample
+    // Sample temporal = prev_pixel_sample[global_index];
+    // if (!is_first_frame && temporal.path[1].w != 0.0 && t_reuse) {
+    //     float p1x = PHAT(
+    //             current.path[1],
+    //             current.normal[0],
+    //             current.view_dir[0],
+    //             -temporal.view_dir[1].xyz,
+    //             m_albedo.xyz,
+    //             m_roughness,
+    //             m_metallicity
+    //         ); // phat on current domain, towards previous sample
 
-        float pix = temporal.sample_phat;
+    //     float pix = temporal.sample_phat;
 
-        float pi1 = PHAT(
-                temporal.path[1],
-                temporal.normal[0],
-                temporal.view_dir[0],
-                -current.view_dir[1].xyz,
-                temporal.albedo[0],
-                temporal.roughness[0],
-                temporal.metallicity[0]
-            ); // phat on previous domain, towards current sample
+    //     float pi1 = PHAT(
+    //             temporal.path[1],
+    //             temporal.normal[0],
+    //             temporal.view_dir[0],
+    //             -current.view_dir[1].xyz,
+    //             m_albedo.xyz,
+    //             m_roughness,
+    //             m_metallicity
+    //         ); // phat on previous domain, towards current sample
 
-        float m = pix / (p1x / float(M - 1) + pix) / float(M - 1); // pairwise mis
-        float w = m * p1x * temporal.W;
+    //     float m = pix / (p1x / float(M - 1) + pix) / float(M - 1); // pairwise mis
+    //     float w = m * p1x * temporal.W;
 
-        vec3 temporal_viewdir = temporal.view_dir[1];
-        vec4 temporal_path = temporal.path[2];
-        temporal = current;
-        temporal.view_dir[1] = temporal_viewdir;
-        temporal.path[2] = temporal_path;
+    //     vec3 temporal_viewdir = temporal.view_dir[1];
+    //     vec4 temporal_path = temporal.path[2];
+    //     temporal = current;
+    //     temporal.view_dir[1] = temporal_viewdir;
+    //     temporal.path[2] = temporal_path;
 
-        updateR(r, temporal, w);
+    //     updateR(r, temporal, w);
 
-        mis_canonical += p11 / (p11 / float(M - 1) + pi1) / float(M - 1);
-    }
+    //     mis_canonical += p11 / (p11 / float(M - 1) + pi1) / float(M - 1);
+    // }
 
     mis_canonical /= float(M - 1);
 
@@ -169,9 +169,9 @@ void main() {
                 s.normal[0],
                 s.view_dir[0],
                 -s.view_dir[1],
-                s.albedo[0],
-                s.roughness[0],
-                s.metallicity[0]
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
             ); // Can't use sample_phat here
 
     imageStore(out_img, tcoord, vec4(frag_color, 1.0));

@@ -1,7 +1,7 @@
 #version 450 core
 #extension GL_ARB_shading_language_include : require
 
-#define N_SAMPLES 16
+#define N_SAMPLES 32
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
@@ -21,6 +21,7 @@ layout(location = 13) uniform float additional_seed;
 layout(location = 15) uniform int width;
 layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
+layout(location = 20) uniform bool t_reuse;
 
 #include "common.comp"
 
@@ -49,9 +50,7 @@ void main() {
     if (result) {
         s.path[1] = first_hit_pos;
         s.normal[0] = first_hit_normal;
-        s.albedo[0] = m_albedo.xyz;
-        s.metallicity[0] = m_metallicity;
-        s.roughness[0] = m_roughness;
+        s.mat_index[0] = 0; // TODO
     } else {
         for (int i = 1; i < s.path.length(); i++) {
             s.path[i] = cam_ray_dir;
@@ -87,16 +86,16 @@ void main() {
                 N,
                 V,
                 -s.view_dir[1],
-                s.albedo[0],
-                s.roughness[0],
-                s.metallicity[0]
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
             ) * s.W * m;
 
         updateR(r, s, w);
     }
 
     float sample_phat = phat1(
-            r.sample_chosen.path[1], r.sample_chosen.normal[0], r.sample_chosen.view_dir[0], -r.sample_chosen.view_dir[1], r.sample_chosen.albedo[0], r.sample_chosen.roughness[0], r.sample_chosen.metallicity[0]
+            r.sample_chosen.path[1], r.sample_chosen.normal[0], r.sample_chosen.view_dir[0], -r.sample_chosen.view_dir[1], m_albedo.xyz, m_roughness, m_metallicity
         );
     r.sample_chosen.W = r.total_weight / sample_phat;
     r.sample_chosen.sample_phat = sample_phat;
@@ -108,5 +107,56 @@ void main() {
     r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
     r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
 
-    pixel_sample[global_index] = r.sample_chosen;
+    Sample temporal = pixel_sample[global_index];
+    Sample current = r.sample_chosen;
+    if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0) {
+        pixel_sample[global_index] = current;
+    } else {
+        // Temporal reuse
+        // TODO: Incorporate motion vector
+
+        Reservoir r = new_reservoir();
+        const float Mm1 = 1.0;
+
+        const float p1x = phat1(
+                current.path[1],
+                current.normal[0],
+                current.view_dir[0],
+                -temporal.view_dir[1].xyz,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        const float pix = temporal.sample_phat;
+
+        const float pi1 = phat1(
+                temporal.path[1],
+                temporal.normal[0],
+                temporal.view_dir[0],
+                -current.view_dir[1].xyz,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        const float m = pix / (p1x / Mm1 + pix) / Mm1;
+        const float w = m * p1x * temporal.W;
+
+        vec3 temporal_viewdir = temporal.view_dir[1];
+        vec4 temporal_path = temporal.path[2];
+        temporal = current;
+        temporal.view_dir[1] = temporal_viewdir;
+        temporal.path[2] = temporal_path;
+
+        updateR(r, temporal, w);
+        // mis_canonical = m
+
+        updateR(r, current, m * current.sample_phat * current.W);
+
+        Sample result = r.sample_chosen;
+        result.W = r.total_weight / result.sample_phat;
+
+        pixel_sample[global_index] = result;
+    }
 }

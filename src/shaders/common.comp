@@ -6,10 +6,15 @@ uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_Gl
 uint global_index = gl_GlobalInvocationID.y * width + gl_GlobalInvocationID.x;
 
 // https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/, slightly modified
+// uint randu() {
+//     seed = seed * 747796405u + 2891336453u; // LCG
+//     uint word = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u; // PCG Hash
+//     return (word >> 22u) ^ word; // IDK
+// }
+
 uint randu() {
-    seed = seed * 747796405u + 2891336453u; // LCG
-    uint word = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u; // PCG Hash
-    return (word >> 22u) ^ word; // IDK
+    seed = 1664525 * seed + 1013904223;
+    return seed;
 }
 
 float randf() {
@@ -63,11 +68,9 @@ struct SimpleMaterial {
 
 struct Sample {
     vec4[3] path; // .w = 1 for point, .w = 0 for direction. path[0] is always camera position
-    vec3[2] normal;
     vec3[2] view_dir;
-    vec3[1] albedo;
-    float[1] metallicity;
-    float[1] roughness;
+    vec3[1] normal;
+    uint[1] mat_index;
     float W;
     float sample_phat;
 };
@@ -76,10 +79,8 @@ Sample empty_sample() {
     return Sample(
         vec4[](vec4(0.0), vec4(0.0), vec4(0.0)),
         vec3[](vec3(0.0), vec3(0.0)),
-        vec3[](vec3(0.0), vec3(0.0)),
         vec3[](vec3(0.0)),
-        float[](0.0),
-        float[](0.0),
+        uint[](0),
         0.0,
         0.0
     );
