@@ -1,7 +1,7 @@
 #version 450 core
 #extension GL_ARB_shading_language_include : require
 
-#define N_SAMPLES 32
+#define N_SAMPLES 64
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
@@ -98,12 +98,12 @@ void main() {
 
     r.sample_chosen.W = r.total_weight / r.sample_chosen.sample_phat;
 
-    // bool shadow_result = trace_shadow(
-    //         s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
-    //     );
+    bool shadow_result = trace_shadow(
+            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+        );
 
-    // r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
-    // r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
+    r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
+    r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
 
     Sample temporal = pixel_sample[global_index];
     Sample current = r.sample_chosen;
@@ -138,7 +138,7 @@ void main() {
                 m_metallicity
             );
 
-        const float m = pix * 10.0 / max(p1x + pix * 10.0, 0.0001);
+        const float m = pix * 30.0 / (p1x + pix * 30.0);
         const float w = m * p1x; // * temporal.W;
 
         vec3 temporal_viewdir = temporal.view_dir[1];
@@ -150,12 +150,12 @@ void main() {
         updateR(r, temporal, w);
 
         {
-            float m = current.sample_phat / max(current.sample_phat + pi1 * 10.0, 0.001);
+            float m = current.sample_phat / (current.sample_phat + pi1 * 30.0);
             updateR(r, current, m * current.sample_phat * current.W);
         }
 
         Sample result = r.sample_chosen;
-        result.W = r.total_weight / max(result.sample_phat, 0.001);
+        result.W = r.total_weight / (result.sample_phat);
 
         pixel_sample[global_index] = result;
     }

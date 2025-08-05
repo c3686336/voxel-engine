@@ -3,8 +3,8 @@
 
 #define N_SAMPLES 32
 
-const int N_NEIGHBORS = 3;
-const int TAXI_RADIUS = 128;
+const int N_NEIGHBORS = 7;
+const int TAXI_RADIUS = 256;
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
@@ -26,8 +26,6 @@ layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
 layout(location = 20) uniform bool t_reuse;
 
-const int M = N_NEIGHBORS + 1;
-
 #include "common.comp"
 
 #define PHAT phat1
@@ -42,39 +40,15 @@ void main() {
         return;
     }
 
-    if (true) {
-        Sample s = current;
-
-        bool shadow_result = trace_shadow(
-                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
-            );
-
-        vec3 frag_color =
-            shadow_result ?
-            vec3(0.0) :
-            s.W * texture(skybox, s.path[2].xyz).xyz * brdf(
-                    s.normal[0],
-                    s.view_dir[0],
-                    -s.view_dir[1],
-                    m_albedo.xyz,
-                    m_roughness,
-                    m_metallicity
-                ); // Can't use sample_phat here
-
-        imageStore(out_img, tcoord, vec4(frag_color, 1.0));
-
-        return;
-    }
-
     float mis_canonical = 0.0;
     Reservoir r = new_reservoir();
 
     float p11 = current.sample_phat;
 
-    // Spatial reuse
-    // TODO: parallelize this
+    uint[N_NEIGHBORS] neighbor_indices;
+    uint n_picked = 0;
+
     for (int i = 0; i < N_NEIGHBORS; i++) {
-        // Shift the sampling domain a bit if the pixel is too close to the border
         uint neighbor_x_min = max(int(gl_GlobalInvocationID.x) - TAXI_RADIUS, 0);
         uint neighbor_x_max = min(neighbor_x_min + 2 * TAXI_RADIUS, width - 1);
         neighbor_x_min = neighbor_x_max - 2 * TAXI_RADIUS;
@@ -88,12 +62,24 @@ void main() {
         uvec2 sample_pos = uvec2(neighbor_x_min, neighbor_y_min) + offset;
         uint sample_index = sample_pos.y * width + sample_pos.x;
 
-        Sample neighbor = pixel_sample[sample_index];
+        Sample candidate = pixel_sample[sample_index];
 
-        // Neighbor rejection
-        if (neighbor.path[1].w == 0.0 || dot(neighbor.normal[0], current.normal[0]) < 0.5 || isnan(neighbor.W)) {
+        // Rejection; Shall never depend on neighbor.path! neighbor.path[1].w check is checking if it's ray into infinity, does not matter here?
+        if (candidate.path[1].w == 0.0 || dot(candidate.normal[0], current.normal[0]) < 0.5 || isnan(candidate.W)) {
             continue;
+        } else {
+            neighbor_indices[n_picked] = sample_index;
+            n_picked++;
         }
+    }
+
+    const float Mm1 = float(n_picked);
+    const float M = Mm1 + 1.0;
+
+    // Spatial reuse
+    // TODO: parallelize this
+    for (int i = 0; i < n_picked; i++) {
+        Sample neighbor = pixel_sample[neighbor_indices[i]];
 
         float p1x = PHAT(
                 current.path[1],
@@ -117,8 +103,10 @@ void main() {
                 m_metallicity
             ); // phat on neighbor's domain, towards current sample
 
-        float m = pix / (p1x / float(M - 1) + pix); // pairwise mis
-        float w = m * p1x * neighbor.W;
+        float m = pix / (p1x / Mm1 + pix); // pairwise mis
+        float neighborW = Mm1 / (float(TAXI_RADIUS) * float(TAXI_RADIUS));
+
+        float w = m * p1x * neighborW; // * neighbor.W;
 
         // Shift
         vec3 neighbor_viewdir = neighbor.view_dir[1];
@@ -129,10 +117,10 @@ void main() {
 
         updateR(r, neighbor, w);
 
-        mis_canonical += p11 / (p11 / float(M - 1) + pi1) / float(M - 1);
+        mis_canonical += p11 / (p11 / Mm1 + pi1) / Mm1;
     }
 
-    mis_canonical /= float(M - 1);
+    mis_canonical /= Mm1;
 
     updateR(r, current, mis_canonical * p11 * current.W);
 
