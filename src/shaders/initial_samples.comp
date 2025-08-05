@@ -21,6 +21,7 @@ layout(location = 13) uniform float additional_seed;
 layout(location = 15) uniform int width;
 layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
+layout(location = 20) uniform bool t_reuse;
 
 #include "common.comp"
 
@@ -65,5 +66,5 @@ void main() {
                 result.path[1], result.normal[0], result.view_dir[0], -result.view_dir[1], result.albedo[0], result.roughness[0], result.metallicity[0]
             );
 
-    pixel_sample[global_index] = r.sample_chosen;
+    pixel_sample[global_index] = result;
 }

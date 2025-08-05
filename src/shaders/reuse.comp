@@ -39,7 +39,30 @@ void main() {
 
     if (current.path[1].w == 0.0) {
         imageStore(out_img, tcoord, texture(skybox, current.path[1].xyz)); // 0 bounce
-        prev_pixel_sample[global_index] = current;
+        return;
+    }
+
+    if (true) {
+        Sample s = current;
+
+        bool shadow_result = trace_shadow(
+                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+            );
+
+        vec3 frag_color =
+            shadow_result ?
+            vec3(0.0) :
+            s.W * texture(skybox, s.path[2].xyz).xyz * brdf(
+                    s.normal[0],
+                    s.view_dir[0],
+                    -s.view_dir[1],
+                    m_albedo.xyz,
+                    m_roughness,
+                    m_metallicity
+                ); // Can't use sample_phat here
+
+        imageStore(out_img, tcoord, vec4(frag_color, 1.0));
+
         return;
     }
 
@@ -109,54 +132,14 @@ void main() {
         mis_canonical += p11 / (p11 / float(M - 1) + pi1) / float(M - 1);
     }
 
-    // Temporal reuse
-    // Sample temporal = prev_pixel_sample[global_index];
-    // if (!is_first_frame && temporal.path[1].w != 0.0 && t_reuse) {
-    //     float p1x = PHAT(
-    //             current.path[1],
-    //             current.normal[0],
-    //             current.view_dir[0],
-    //             -temporal.view_dir[1].xyz,
-    //             m_albedo.xyz,
-    //             m_roughness,
-    //             m_metallicity
-    //         ); // phat on current domain, towards previous sample
-
-    //     float pix = temporal.sample_phat;
-
-    //     float pi1 = PHAT(
-    //             temporal.path[1],
-    //             temporal.normal[0],
-    //             temporal.view_dir[0],
-    //             -current.view_dir[1].xyz,
-    //             m_albedo.xyz,
-    //             m_roughness,
-    //             m_metallicity
-    //         ); // phat on previous domain, towards current sample
-
-    //     float m = pix / (p1x / float(M - 1) + pix) / float(M - 1); // pairwise mis
-    //     float w = m * p1x * temporal.W;
-
-    //     vec3 temporal_viewdir = temporal.view_dir[1];
-    //     vec4 temporal_path = temporal.path[2];
-    //     temporal = current;
-    //     temporal.view_dir[1] = temporal_viewdir;
-    //     temporal.path[2] = temporal_path;
-
-    //     updateR(r, temporal, w);
-
-    //     mis_canonical += p11 / (p11 / float(M - 1) + pi1) / float(M - 1);
-    // }
-
     mis_canonical /= float(M - 1);
 
     updateR(r, current, mis_canonical * p11 * current.W);
 
-    Sample result = r.sample_chosen;
-    result.W = r.total_weight / result.sample_phat;
+    Sample s = r.sample_chosen;
+    s.W = r.total_weight / s.sample_phat;
 
-    Sample s = result;
-    prev_pixel_sample[global_index] = result;
+    pixel_sample[global_index] = s;
 
     bool shadow_result = trace_shadow(
             s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)

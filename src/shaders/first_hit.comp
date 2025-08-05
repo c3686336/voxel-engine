@@ -81,7 +81,7 @@ void main() {
 
         float m = 1.0 / float(N_SAMPLES);
 
-        float w = phat1(
+        float sample_phat = phat1(
                 s.path[1],
                 N,
                 V,
@@ -89,27 +89,25 @@ void main() {
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity
-            ) * s.W * m;
+            );
+        float w = sample_phat * s.W * m;
+        s.sample_phat = sample_phat;
 
         updateR(r, s, w);
     }
 
-    float sample_phat = phat1(
-            r.sample_chosen.path[1], r.sample_chosen.normal[0], r.sample_chosen.view_dir[0], -r.sample_chosen.view_dir[1], m_albedo.xyz, m_roughness, m_metallicity
-        );
-    r.sample_chosen.W = r.total_weight / sample_phat;
-    r.sample_chosen.sample_phat = sample_phat;
+    r.sample_chosen.W = r.total_weight / r.sample_chosen.sample_phat;
 
-    bool shadow_result = trace_shadow(
-            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
-        );
+    // bool shadow_result = trace_shadow(
+    //         s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+    //     );
 
-    r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
-    r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
+    // r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
+    // r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
 
     Sample temporal = pixel_sample[global_index];
     Sample current = r.sample_chosen;
-    if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0) {
+    if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0 || dot(temporal.normal[0], current.normal[0]) < 0.5 || isnan(temporal.W) || isinf(temporal.W)) {
         pixel_sample[global_index] = current;
     } else {
         // Temporal reuse
@@ -140,8 +138,8 @@ void main() {
                 m_metallicity
             );
 
-        const float m = pix / (p1x / Mm1 + pix) / Mm1;
-        const float w = m * p1x * temporal.W;
+        const float m = pix * 10.0 / max(p1x + pix * 10.0, 0.0001);
+        const float w = m * p1x; // * temporal.W;
 
         vec3 temporal_viewdir = temporal.view_dir[1];
         vec4 temporal_path = temporal.path[2];
@@ -150,12 +148,14 @@ void main() {
         temporal.path[2] = temporal_path;
 
         updateR(r, temporal, w);
-        // mis_canonical = m
 
-        updateR(r, current, m * current.sample_phat * current.W);
+        {
+            float m = current.sample_phat / max(current.sample_phat + pi1 * 10.0, 0.001);
+            updateR(r, current, m * current.sample_phat * current.W);
+        }
 
         Sample result = r.sample_chosen;
-        result.W = r.total_weight / result.sample_phat;
+        result.W = r.total_weight / max(result.sample_phat, 0.001);
 
         pixel_sample[global_index] = result;
     }

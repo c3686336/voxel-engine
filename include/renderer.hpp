@@ -94,22 +94,17 @@ private:
     Program restir_first_hit = Program{
         Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("first_hit.comp"))
     };
-    Program restir_initial_samples = Program{Shader<gl::GL_COMPUTE_SHADER>(
-        std::filesystem::path("initial_samples.comp")
-    )};
+    Program restir_initial_samples;
     Program restir_reuse = Program{
         Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("reuse.comp"))
     };
-    Program restir_shade = Program{
-        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("shade.comp"))
-    };
+    Program restir_shade;
 
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
 
-    std::array<ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER>, 3>
-        prev_reservoirs;
+    ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER> prev_reservoirs;
     int reservoir_index;
     bool is_first_frame = true;
 
