@@ -116,7 +116,7 @@ public:
                result == gl::GLenum::GL_CONDITION_SATISFIED;
     }
 
-    void bind(gl::GLuint binding_index) {
+    virtual void bind(gl::GLuint binding_index) const override {
         gl::glBindBufferRange(
             type, binding_index, this->get(), allocation_size * index,
             allocation_size
