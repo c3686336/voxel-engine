@@ -483,7 +483,6 @@ float phat_full(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, 
     bool shadow_result = trace_shadow(
             pos + bias_amt * vec4(L, 0.0), vec4(L, 0.0)
         );
-    shadow_result = false;
 
     return shadow_result ? 0.0 : dot(textureLod(skybox, L, LOD).xyz, brdf(
             N,
@@ -537,8 +536,29 @@ float phat_shift(Sample f, Sample t, vec3 albedo, float roughness, float metalli
     );
 }
 
+float phat_shift_visibility(Sample f, Sample t, vec3 albedo, float roughness, float metallicity) {
+    return phat_full(
+        t.path[1],
+        t.normal[0],
+        t.view_dir[0],
+        -f.view_dir[1],
+        albedo,
+        roughness,
+        metallicity
+    );
+}
+
 float phat(Sample s, vec3 albedo, float roughness, float metallicity) {
     return phat_shift(
+        s, s,
+        albedo,
+        roughness,
+        metallicity
+    );
+}
+
+float phat_visibility(Sample s, vec3 albedo, float roughness, float metallicity) {
+    return phat_shift_visibility(
         s, s,
         albedo,
         roughness,
