@@ -91,14 +91,6 @@ private:
             std::filesystem::path("draw_texture.frag")
         )
     };
-    Program restir_first_hit = Program{
-        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("first_hit.comp"))
-    };
-    Program restir_initial_samples;
-    Program restir_reuse = Program{
-        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("reuse.comp"))
-    };
-    Program restir_shade;
 
     Program micro_restir_first_hit = Program{
         Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("0_first_hit.comp"))
@@ -148,6 +140,8 @@ private:
     bool debug_pos_view = false;
     bool debug_weight_view = false;
     bool debug_ignore_shadow = false;
+
+    int initial_sample_count = 32;
 };
 
 #endif

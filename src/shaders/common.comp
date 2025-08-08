@@ -22,6 +22,7 @@ layout(location = 22) uniform bool d_normal;
 layout(location = 23) uniform bool d_pos;
 layout(location = 24) uniform bool d_weight;
 layout(location = 25) uniform bool d_shadow;
+layout(location = 26) uniform int n_samples;
 
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 

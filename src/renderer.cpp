@@ -175,6 +175,7 @@ bool Renderer::main_loop(
     ImGui::SliderFloat4("Albedo", glm::value_ptr(albedo), 0.0f, 1.0f);
     ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
     ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
+    ImGui::SliderInt("Initial samples", &initial_sample_count, 1, 64);
     ImGui::Checkbox("Reuse?", &temporal_reuse);
     ImGui::Checkbox("Spatial first?", &spatial_first);
     ImGui::Checkbox("Debug: Show normal?", &debug_normal_view);
@@ -275,6 +276,7 @@ void Renderer::bind_everything() {
     glUniform1i(23, debug_pos_view);
     glUniform1i(24, debug_weight_view);
     glUniform1i(25, debug_ignore_shadow);
+    glUniform1i(26, initial_sample_count);
 
     glUniform1f(13, (float)glfwGetTime());
 
