@@ -1,7 +1,7 @@
 #define INF 1.0/0.0
 #define PI 3.1415926538
 
-#define LOD 5.0
+#define LOD 7.0
 
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 
