@@ -194,31 +194,32 @@ bool Renderer::main_loop(
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     if (spatial_first) {
+        micro_restir_spatial_reuse.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
         micro_restir_temporal_reuse.use();
         bind_everything();
         glDispatchCompute(width / 8, height / 8, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        micro_restir_shade.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     } else {
-        micro_restir_shade.use();
+        micro_restir_temporal_reuse.use();
         bind_everything();
         glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        micro_restir_temporal_reuse.use();
+        micro_restir_spatial_reuse.use();
         bind_everything();
         glDispatchCompute(width / 8, height / 8, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
-    micro_restir_spatial_reuse.use();
+    micro_restir_shade.use();
     bind_everything();
     glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     quad_renderer.use();
     vao.bind();
