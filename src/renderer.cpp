@@ -176,17 +176,11 @@ bool Renderer::main_loop(
     ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
     ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
     ImGui::Checkbox("Reuse?", &temporal_reuse);
+    ImGui::Checkbox("Spatial first?", &spatial_first);
+    ImGui::Checkbox("Debug: Show normal?", &debug_normal_view);
+    ImGui::Checkbox("Debug: Show hit position?", &debug_pos_view);
+    ImGui::Checkbox("Debug: Show UCW?", &debug_weight_view);
     ImGui::End();
-
-    // restir_first_hit.use();
-    // bind_everything();
-    // glDispatchCompute(width / 8, height / 4, 1);
-    // glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    // restir_reuse.use();
-    // bind_everything();
-    // glDispatchCompute(width / 8, height / 4, 1);
-    // glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     micro_restir_first_hit.use();
     bind_everything();
@@ -198,20 +192,32 @@ bool Renderer::main_loop(
     glDispatchCompute(width / 8, height / 8, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    micro_restir_temporal_reuse.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    if (spatial_first) {
+        micro_restir_temporal_reuse.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        micro_restir_shade.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    } else {
+        micro_restir_shade.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+        micro_restir_temporal_reuse.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    }
 
     micro_restir_spatial_reuse.use();
     bind_everything();
     glDispatchCompute(width / 8, height / 8, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    micro_restir_shade.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     quad_renderer.use();
     vao.bind();
@@ -263,6 +269,9 @@ void Renderer::bind_everything() {
     glUniform1i(16, height);
     glUniform1i(17, is_first_frame);
     glUniform1i(20, temporal_reuse);
+    glUniform1i(22, debug_normal_view);
+    glUniform1i(23, debug_pos_view);
+    glUniform1i(24, debug_weight_view);
 
     glUniform1f(13, (float)glfwGetTime());
 

@@ -22,6 +22,9 @@ layout(location = 15) uniform int width;
 layout(location = 16) uniform int height;
 layout(location = 17) uniform bool is_first_frame;
 layout(location = 20) uniform bool t_reuse;
+layout(location = 22) uniform bool d_normal;
+layout(location = 23) uniform bool d_pos;
+layout(location = 24) uniform bool d_weight;
 
 #include "common.comp"
 
@@ -31,6 +34,20 @@ void main() {
 
     if (s.path[1].w == 0.0) {
         imageStore(out_img, tcoord, textureLod(skybox, s.path[1].xyz, 0.0));
+        return;
+    }
+
+    if (d_normal) {
+        imageStore(out_img, tcoord, vec4(s.normal[0], 1.0));
+        return;
+    }
+    if (d_pos) {
+        imageStore(out_img, tcoord, vec4(s.path[1].xyz, 1.0));
+        return;
+    }
+    if (d_weight) {
+        float weight = tanh(s.W) / 2.0 + 0.5;
+        imageStore(out_img, tcoord, vec4(weight, weight, weight, 1.0));
         return;
     }
 
