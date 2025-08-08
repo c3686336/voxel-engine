@@ -31,47 +31,46 @@ void main() {
 
     if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0 || dot(temporal.normal[0], current.normal[0]) < 0.5 || isnan(temporal.W) || isinf(temporal.W)) {
         return;
-    } else {
-        // Temporal reuse
-        // TODO: Incorporate motion vector
-
-        const float Mm1 = 1.0;
-
-        const float p1x = phat_shift(
-                temporal, current,
-                m_albedo.xyz,
-                m_roughness,
-                m_metallicity
-            );
-
-        const float pix = temporal.sample_phat;
-
-        const float pi1 = phat_shift(
-                current, temporal,
-                m_albedo.xyz,
-                m_roughness,
-                m_metallicity
-            );
-
-        const float m = pix / (p1x + pix);
-        const float w = m * p1x * temporal.W;
-
-        vec3 temporal_viewdir = temporal.view_dir[1];
-        vec4 temporal_path = temporal.path[2];
-        temporal = current;
-        temporal.view_dir[1] = temporal_viewdir;
-        temporal.path[2] = temporal_path;
-
-        Reservoir r = Reservoir(temporal, w);
-
-        {
-            float m = current.sample_phat / (current.sample_phat + pi1);
-            updateR(r, current, m * current.sample_phat * current.W);
-        }
-
-        Sample result = r.sample_chosen;
-        result.W = r.total_weight / (result.sample_phat);
-
-        pixel_sample[global_index] = result;
     }
+    // Temporal reuse
+    // TODO: Incorporate motion vector
+
+    const float Mm1 = 1.0;
+
+    const float p1x = phat_shift(
+            temporal, current,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    const float pix = temporal.sample_phat;
+
+    const float pi1 = phat_shift(
+            current, temporal,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    const float m = pix / (p1x + pix);
+    const float w = m * p1x * temporal.W;
+
+    vec3 temporal_viewdir = temporal.view_dir[1];
+    vec4 temporal_path = temporal.path[2];
+    temporal = current;
+    temporal.view_dir[1] = temporal_viewdir;
+    temporal.path[2] = temporal_path;
+
+    Reservoir r = Reservoir(temporal, w);
+
+    {
+        float m = current.sample_phat / (current.sample_phat + pi1);
+        updateR(r, current, m * current.sample_phat * current.W);
+    }
+
+    Sample result = r.sample_chosen;
+    result.W = r.total_weight / (result.sample_phat);
+
+    pixel_sample[global_index] = result;
 }
