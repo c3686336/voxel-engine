@@ -398,7 +398,7 @@ bool trace_shadow(vec4 origin, vec4 dir) {
 
         bool intersected = minmax_modelsp.y > minmax_modelsp.x;
 
-        vec4 min_intersect_displacement_worldsp = model_mat * dir_modelsp * minmax_modelsp.x;
+        if (!intersected) continue;
 
         vec4 bias_modelsp = level_to_size(0, level) * bias_amt * dir_modelsp;
         vec4 cur_pos_modelsp = clamp(origin_modelsp + dir_modelsp * minmax_modelsp.x - bias_modelsp, 0.0, 1.0);
