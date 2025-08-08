@@ -25,6 +25,7 @@ layout(location = 20) uniform bool t_reuse;
 layout(location = 22) uniform bool d_normal;
 layout(location = 23) uniform bool d_pos;
 layout(location = 24) uniform bool d_weight;
+layout(location = 25) uniform bool d_shadow;
 
 #include "common.comp"
 
@@ -42,7 +43,7 @@ void main() {
         return;
     }
     if (d_pos) {
-        imageStore(out_img, tcoord, vec4(s.path[1].xyz, 1.0));
+        imageStore(out_img, tcoord, vec4(s.path[2].xyz, 1.0));
         return;
     }
     if (d_weight) {
@@ -56,7 +57,7 @@ void main() {
         );
 
     vec3 frag_color =
-        shadow_result ?
+        shadow_result && (!d_shadow) ?
         vec3(0.0) :
         s.W * textureLod(skybox, s.path[2].xyz, 0.0).rgb * brdf(
                 s.normal[0],

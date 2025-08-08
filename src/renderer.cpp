@@ -180,6 +180,7 @@ bool Renderer::main_loop(
     ImGui::Checkbox("Debug: Show normal?", &debug_normal_view);
     ImGui::Checkbox("Debug: Show hit position?", &debug_pos_view);
     ImGui::Checkbox("Debug: Show UCW?", &debug_weight_view);
+    ImGui::Checkbox("Debug: Ignore shadow result?", &debug_ignore_shadow);
     ImGui::End();
 
     micro_restir_first_hit.use();
@@ -272,6 +273,7 @@ void Renderer::bind_everything() {
     glUniform1i(22, debug_normal_view);
     glUniform1i(23, debug_pos_view);
     glUniform1i(24, debug_weight_view);
+    glUniform1i(25, debug_ignore_shadow);
 
     glUniform1f(13, (float)glfwGetTime());
 

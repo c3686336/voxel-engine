@@ -142,11 +142,12 @@ private:
     float roughness = 0.5;
 
     bool temporal_reuse = true;
-    bool spatial_first = true;
+    bool spatial_first = false;
 
     bool debug_normal_view = false;
     bool debug_pos_view = false;
     bool debug_weight_view = false;
+    bool debug_ignore_shadow = false;
 };
 
 #endif
