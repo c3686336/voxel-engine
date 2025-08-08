@@ -3,8 +3,8 @@
 
 #define N_SAMPLES 32
 
-const int N_NEIGHBORS = 7;
-const int TAXI_RADIUS = 256;
+const int N_NEIGHBORS = 5;
+const int TAXI_RADIUS = 128; // Too big radius (I think) cause cache miss
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
