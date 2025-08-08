@@ -7,26 +7,6 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
 
-layout(location = 1) uniform vec3 camera_pos;
-layout(location = 2) uniform vec3 camera_dir;
-layout(location = 5) uniform vec3 camera_right;
-layout(location = 4) uniform vec3 camera_up;
-layout(location = 6) uniform float bias_amt;
-layout(location = 8) uniform uint n_models;
-layout(location = 9) uniform vec4 m_albedo;
-layout(location = 10) uniform float m_metallicity;
-layout(location = 11) uniform float m_roughness;
-layout(location = 12) uniform samplerCube skybox;
-layout(location = 13) uniform float additional_seed;
-layout(location = 15) uniform int width;
-layout(location = 16) uniform int height;
-layout(location = 17) uniform bool is_first_frame;
-layout(location = 20) uniform bool t_reuse;
-layout(location = 22) uniform bool d_normal;
-layout(location = 23) uniform bool d_pos;
-layout(location = 24) uniform bool d_weight;
-layout(location = 25) uniform bool d_shadow;
-
 #include "common.comp"
 
 void main() {
