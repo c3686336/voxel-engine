@@ -90,7 +90,7 @@ void sample_hemisphere(vec3 N, out vec3 dir, out float w) {
     vec3 sample_dir = rand_sphere();
     // Fold it in the direction of first_hit_normal
     dir = sample_dir - 2.0 * N * min(dot(N, sample_dir), 0.0);
-    w = 0.5 / PI;
+    w = PI * 2.0;
 }
 
 struct Reservoir {
