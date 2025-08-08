@@ -477,7 +477,7 @@ vec3 brdf(vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicit
     return kd * flambert(albedo) + fcook_torrance(N, V, L, H, F0, alpha);
 }
 
-float phat(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+float phat_full(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
     // Full pdf
 
     bool shadow_result = trace_shadow(
@@ -525,6 +525,27 @@ float phat3(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, floa
     return dot(color, vec3(1.0, 1.0, 1.0));
 }
 
+float phat_shift(Sample f, Sample t, vec3 albedo, float roughness, float metallicity) {
+    return phat1(
+        t.path[1],
+        t.normal[0],
+        t.view_dir[0],
+        -f.view_dir[1],
+        albedo,
+        roughness,
+        metallicity
+    );
+}
+
+float phat(Sample s, vec3 albedo, float roughness, float metallicity) {
+    return phat_shift(
+        s, s,
+        albedo,
+        roughness,
+        metallicity
+    );
+}
+
 ivec2 tcoord = ivec2(gl_GlobalInvocationID.xy);
 
-#define PHAT phat1
+#define PHAT phat_full

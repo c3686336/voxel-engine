@@ -65,11 +65,8 @@ void main() {
 
         bool invalid = neighbor.path[1].w == 0.0 || dot(neighbor.normal[0], neighbor.normal[0]) < 0.5 || isnan(neighbor.W);
 
-        float p1x = PHAT(
-                current.path[1],
-                current.normal[0],
-                current.view_dir[0],
-                -neighbor.view_dir[1],
+        float p1x = phat_shift(
+                neighbor, current
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity
@@ -80,10 +77,7 @@ void main() {
         // Valid on invalid neighbor
 
         float pi1 = invalid ? 0.0 : PHAT(
-                neighbor.path[1],
-                neighbor.normal[0],
-                neighbor.view_dir[0],
-                -current.view_dir[1],
+                current, neighbor,
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity

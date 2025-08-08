@@ -37,11 +37,8 @@ void main() {
 
         const float Mm1 = 1.0;
 
-        const float p1x = PHAT(
-                current.path[1],
-                current.normal[0],
-                current.view_dir[0],
-                -temporal.view_dir[1],
+        const float p1x = phat_shift(
+                temporal, current,
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity
@@ -49,11 +46,8 @@ void main() {
 
         const float pix = temporal.sample_phat;
 
-        const float pi1 = PHAT(
-                temporal.path[1],
-                temporal.normal[0],
-                temporal.view_dir[0],
-                -current.view_dir[1],
+        const float pi1 = phat_shift(
+                current, temporal,
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity

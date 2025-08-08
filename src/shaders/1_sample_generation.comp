@@ -44,11 +44,8 @@ void main() {
     s.W = sample_weight;
 
     float m = 1.0 / float(N_SAMPLES);
-    float sample_phat = PHAT(
-            s.path[1],
-            s.normal[0],
-            s.view_dir[0],
-            -s.view_dir[1],
+    float sample_phat = phat(
+            s,
             m_albedo.xyz,
             m_roughness,
             m_metallicity
@@ -67,11 +64,8 @@ void main() {
         s.W = sample_weight;
 
         float m = 1.0 / float(N_SAMPLES);
-        float sample_phat = PHAT(
-                s.path[1],
-                s.normal[0],
-                s.view_dir[0],
-                -s.view_dir[1],
+        float sample_phat = phat(
+                s,
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity
