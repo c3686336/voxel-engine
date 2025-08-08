@@ -41,7 +41,7 @@ void main() {
                 current.path[1],
                 current.normal[0],
                 current.view_dir[0],
-                -temporal.view_dir[1].xyz,
+                -temporal.view_dir[1],
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity
@@ -53,7 +53,7 @@ void main() {
                 temporal.path[1],
                 temporal.normal[0],
                 temporal.view_dir[0],
-                -current.view_dir[1].xyz,
+                -current.view_dir[1],
                 m_albedo.xyz,
                 m_roughness,
                 m_metallicity

@@ -59,7 +59,7 @@ void main() {
     vec3 frag_color =
         shadow_result && (!d_shadow) ?
         vec3(0.0) :
-        s.W * textureLod(skybox, s.path[2].xyz, 0.0).rgb * brdf(
+        s.W * textureLod(skybox, -s.view_dir[1], 0.0).rgb * brdf(
                 s.normal[0],
                 s.view_dir[0],
                 -s.view_dir[1],
