@@ -100,12 +100,33 @@ private:
     };
     Program restir_shade;
 
+    Program micro_restir_first_hit = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("0_first_hit.comp"))
+    };
+
+    Program micro_restir_sample_generation =
+        Program{Shader<gl::GL_COMPUTE_SHADER>(
+            std::filesystem::path("1_sample_generation.comp")
+        )};
+
+    Program micro_restir_temporal_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("2_temporal_reuse.comp")
+    )};
+
+    Program micro_restir_spatial_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("3_spatial_reuse.comp")
+    )};
+
+    Program micro_restir_shade = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("4_shade.comp"))
+    };
+
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
 
+    ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER> reservoirs;
     ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER> prev_reservoirs;
-    int reservoir_index;
     bool is_first_frame = true;
 
     Camera camera;

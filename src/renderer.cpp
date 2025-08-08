@@ -107,7 +107,7 @@ void message_callback(
 
 Renderer::Renderer(int width, int height)
     : width(width), height(height), window(width, height, "asdf"), vbo(), vao(),
-      ibo(), reservoir_index(0), camera(), cubemap(), quad_texture() {
+      ibo(), camera(), cubemap(), quad_texture() {
     ensure_glbinding();
 
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -130,6 +130,8 @@ Renderer::Renderer(int width, int height)
     materials.push_back(Material{});
     svodag_ssbo.push_back(SerializedNode{});
 
+    reservoirs =
+        ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 200};
     prev_reservoirs =
         ImmutableBuffer<GL_SHADER_STORAGE_BUFFER>{width * height * 200};
 
@@ -176,14 +178,39 @@ bool Renderer::main_loop(
     ImGui::Checkbox("Reuse?", &temporal_reuse);
     ImGui::End();
 
-    restir_first_hit.use();
+    // restir_first_hit.use();
+    // bind_everything();
+    // glDispatchCompute(width / 8, height / 4, 1);
+    // glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    // restir_reuse.use();
+    // bind_everything();
+    // glDispatchCompute(width / 8, height / 4, 1);
+    // glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    micro_restir_first_hit.use();
     bind_everything();
-    glDispatchCompute(width / 8, height / 4, 1);
+    glDispatchCompute(width / 8, height / 8, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    restir_reuse.use();
+    micro_restir_sample_generation.use();
     bind_everything();
-    glDispatchCompute(width / 8, height / 4, 1);
+    glDispatchCompute(width / 8, height / 8, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    micro_restir_temporal_reuse.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 8, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    micro_restir_spatial_reuse.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 8, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    micro_restir_shade.use();
+    bind_everything();
+    glDispatchCompute(width / 8, height / 8, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     quad_renderer.use();
@@ -229,7 +256,8 @@ void Renderer::bind_everything() {
     metadata_ssbo.bind(2);
     materials.bind(6);
     cubemap.bind(0);
-    prev_reservoirs.bind(18);
+    reservoirs.bind(18);
+    prev_reservoirs.bind(21);
     glUniform1i(12, 0);
     glUniform1i(15, width);
     glUniform1i(16, height);

@@ -74,13 +74,14 @@ public:
     template <typename T>
     CubeMap(
         std::array<std::span<T>, 6> images, gl::GLenum internal_format,
-        gl::GLenum format, gl::GLsizei width
+        gl::GLenum format, gl::GLsizei width, bool generate_mips = true,
+        gl::GLuint levels = 7
     ) {
         using namespace gl;
 
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &texture);
 
-        glTextureStorage2D(texture, 1, internal_format, width, width);
+        glTextureStorage2D(texture, levels, internal_format, width, width);
 
         glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -91,6 +92,10 @@ public:
                 texture, 0, 0, 0, idx, width, width, 1, format,
                 GL_UNSIGNED_BYTE, image.data()
             );
+        }
+
+        if (generate_mips) {
+            glGenerateTextureMipmap(texture);
         }
     }
 };

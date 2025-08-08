@@ -1,0 +1,89 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+#define N_SAMPLES 32
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) readonly uniform image2D in_img;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
+layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
+layout(location = 20) uniform bool t_reuse;
+
+#include "common.comp"
+
+void main() {
+    Sample s = pixel_sample[global_index];
+
+    if (s.path[1].w == 0.0) {
+        s.path[2] = s.path[1];
+        pixel_sample[global_index] = s;
+
+        return;
+    }
+
+    vec3 dir;
+    float sample_weight;
+    sample_hemisphere(s.normal[0], dir, sample_weight);
+
+    s.path[2] = vec4(dir, 0.0);
+    s.view_dir[1] = -dir;
+    s.W = sample_weight;
+
+    float m = 1.0 / float(N_SAMPLES);
+    float sample_phat = PHAT(
+            s.path[1],
+            s.normal[0],
+            s.view_dir[0],
+            -s.view_dir[1],
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    s.sample_phat = sample_phat;
+    Reservoir r = Reservoir(s, m * s.W * sample_phat);
+
+    for (int i = 0; i < N_SAMPLES - 1; i++) {
+        vec3 dir;
+        float sample_weight;
+        sample_hemisphere(s.normal[0], dir, sample_weight);
+
+        s.path[2] = vec4(dir, 0.0);
+        s.view_dir[1] = -dir;
+        s.W = sample_weight;
+
+        float m = 1.0 / float(N_SAMPLES);
+        float sample_phat = PHAT(
+                s.path[1],
+                s.normal[0],
+                s.view_dir[0],
+                -s.view_dir[1],
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        s.sample_phat = sample_phat;
+
+        updateR(r, s, m * s.W * sample_phat);
+    }
+
+    s = r.sample_chosen;
+    s.W = r.total_weight / s.sample_phat;
+
+    pixel_sample[global_index] = s;
+}

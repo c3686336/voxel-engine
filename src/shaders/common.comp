@@ -1,6 +1,8 @@
 #define INF 1.0/0.0
 #define PI 3.1415926538
 
+#define LOD 5.0
+
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 
 uint global_index = gl_GlobalInvocationID.y * width + gl_GlobalInvocationID.x;
@@ -107,7 +109,12 @@ Reservoir new_reservoir() {
 
 void updateR(inout Reservoir r, Sample s, float weight) {
     r.total_weight += weight;
-    r.sample_chosen = randf() <= (weight / r.total_weight) ? s : r.sample_chosen;
+    r.sample_chosen = randf() <= (weight / r.total_weight) || r.total_weight == 0.0 ? s : r.sample_chosen;
+}
+
+void mergeR(inout Reservoir r1, in Reservoir r2) {
+    r1.total_weight += r2.total_weight;
+    r1.sample_chosen = randf() <= (r2.total_weight / r1.total_weight) || r1.total_weight == 0.0 ? r2.sample_chosen : r1.sample_chosen;
 }
 
 layout(std430, binding = 3) buffer one {
@@ -124,6 +131,10 @@ layout(std430, binding = 6) buffer matids {
 
 layout(std430, binding = 18) buffer pixel_sample_buf {
     Sample pixel_sample[];
+};
+
+layout(std430, binding = 21) buffer prev_pixel_sample_buf {
+    Sample prev_pixel_sample[];
 };
 
 vec2 slab_test(vec3 cor1, vec3 cor2, vec3 pos, vec3 dir_inv) {
@@ -470,30 +481,50 @@ float phat(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float
     // Full pdf
 
     bool shadow_result = trace_shadow(
-            pos + bias_amt * vec4(N, 0.0), vec4(L, 0.0)
+            pos + bias_amt * vec4(L, 0.0), vec4(L, 0.0)
         );
+    shadow_result = false;
 
-    return shadow_result ? 0.0 : dot(texture(skybox, L).xyz, brdf(
+    return shadow_result ? 0.0 : dot(textureLod(skybox, L, LOD).xyz, brdf(
             N,
             V,
             L,
             albedo,
             roughness,
             metallicity
-        )) * dot(N, L);
+        ));
 }
 
 float phat1(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
     // No visibility
 
-    return max(dot(texture(skybox, L).xyz, brdf(
-                N,
-                V,
-                L,
-                albedo,
-                roughness,
-                metallicity
-            )) * dot(N, L), 0.0);
+    return dot(textureLod(skybox, L, LOD).xyz, brdf(
+            N,
+            V,
+            L,
+            albedo,
+            roughness,
+            metallicity
+        ));
+}
+
+float phat2(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+    vec3 brdf = brdf(
+            N,
+            V,
+            L,
+            albedo,
+            roughness,
+            metallicity
+        );
+    return dot(brdf, vec3(1.0, 1.0, 1.0));
+}
+
+float phat3(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallicity) {
+    vec3 color = textureLod(skybox, L, LOD).xyz;
+    return dot(color, vec3(1.0, 1.0, 1.0));
 }
 
 ivec2 tcoord = ivec2(gl_GlobalInvocationID.xy);
+
+#define PHAT phat1
