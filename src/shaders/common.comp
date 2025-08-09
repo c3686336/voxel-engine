@@ -320,13 +320,13 @@ bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bia
                 dir_inv
             );
 
-        minmax = max(vec2(0.0, 0.0), minmax);
+        if (minmax.y <= 0.0f) return false;
 
         cur_pos += minmax.y * dir + bias;
 
         iters++;
     }
-    while (all(lessThan(cur_pos, vec3(1.0))) && all(lessThan(vec3(0.0), cur_pos)) && iters < 10);
+    while (all(lessThan(cur_pos, vec3(1.0))) && all(lessThan(vec3(0.0), cur_pos)) && iters < 100);
 
     return false;
 }
