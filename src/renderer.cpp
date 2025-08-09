@@ -180,7 +180,8 @@ bool Renderer::main_loop(
     ImGui::SliderFloat("Metallicity", &metallicity, 0.0f, 1.0f);
     ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
     ImGui::SliderInt("Initial samples", &initial_sample_count, 1, 64);
-    ImGui::Checkbox("Reuse?", &temporal_reuse);
+    ImGui::Checkbox("Temporal reuse?", &temporal_reuse);
+    ImGui::Checkbox("Spatial reuse?", &spatial_reuse);
     ImGui::Checkbox("Spatial first?", &spatial_first);
     ImGui::Checkbox("Debug: Show normal?", &debug_normal_view);
     ImGui::Checkbox("Debug: Show hit position?", &debug_pos_view);
@@ -199,10 +200,12 @@ bool Renderer::main_loop(
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     if (spatial_first) {
-        micro_restir_spatial_reuse.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        if (spatial_reuse) {
+            micro_restir_spatial_reuse.use();
+            bind_everything();
+            glDispatchCompute(width / 8, height / 8, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
 
         micro_restir_temporal_reuse.use();
         bind_everything();
@@ -215,10 +218,12 @@ bool Renderer::main_loop(
         glDispatchCompute(width / 8, height / 8, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        micro_restir_spatial_reuse.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        if (spatial_reuse) {
+            micro_restir_spatial_reuse.use();
+            bind_everything();
+            glDispatchCompute(width / 8, height / 8, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
     }
 
     micro_restir_shade.use();

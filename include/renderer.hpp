@@ -134,6 +134,7 @@ private:
     float roughness = 0.5;
 
     bool temporal_reuse = true;
+    bool spatial_reuse = true;
     bool spatial_first = false;
 
     bool debug_normal_view = false;
