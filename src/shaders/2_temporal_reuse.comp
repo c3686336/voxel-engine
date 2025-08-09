@@ -35,7 +35,7 @@ void main() {
             m_metallicity
         );
 
-    const float m = pix / (p1x + pix);
+    const float m = pix * 30.0 / (p1x + pix * 30.0);
     const float w = m * p1x * temporal.W;
 
     vec3 temporal_viewdir = temporal.view_dir[1];
@@ -47,7 +47,7 @@ void main() {
     Reservoir r = Reservoir(temporal, w);
 
     {
-        float m = current.sample_phat / (current.sample_phat + pi1);
+        float m = current.sample_phat / (current.sample_phat + pi1 * 30.0);
         updateR(r, current, m * current.sample_phat * current.W);
     }
 
