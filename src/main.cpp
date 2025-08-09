@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
     glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
 
     Renderer renderer(
-        static_cast<int>(vidmode->width / xscale),
-        static_cast<int>(vidmode->height / yscale)
+        static_cast<int>(vidmode->width / 1.7),
+        static_cast<int>(vidmode->height / 1.75)
     );
 
     renderer.use_cubemap(
