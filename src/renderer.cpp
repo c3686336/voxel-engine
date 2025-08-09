@@ -110,6 +110,10 @@ Renderer::Renderer(int width, int height)
       ibo(), camera(), cubemap(), quad_texture() {
     ensure_glbinding();
 
+    int fb_width, fb_height;
+    glfwGetFramebufferSize(window.get(), &fb_width, &fb_height);
+    gl::glViewport(0, 0, fb_width, fb_height);
+
     glEnable(GL_FRAMEBUFFER_SRGB);
 
     vbo = Buffer<gl::GL_ARRAY_BUFFER>(
