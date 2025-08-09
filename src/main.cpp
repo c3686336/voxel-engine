@@ -57,9 +57,6 @@ int main(int argc, char** argv) {
 
     entt::registry registry;
 
-    auto ball1 = registry.create();
-    auto ball2 = registry.create();
-
     SPDLOG_INFO("Creating matid list");
     MatID_t white = renderer.register_material({glm::vec4(1.0, 1.0, 1.0, 1.0)});
 
