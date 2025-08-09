@@ -66,10 +66,9 @@ void main() {
             ); // phat on neighbor's domain, towards current sample
         // Invalid on invalid neighbor
 
-        float m = pix / (p1x / Mm1 + pix); // pairwise mis
-        float neighborW = Mm1 / (float(TAXI_RADIUS) * float(TAXI_RADIUS));
+        float m = pix / (p1x / Mm1 + pix) / Mm; // pairwise mis
 
-        float w = invalid ? 0.0 : m * p1x * neighborW * neighbor.W;
+        float w = invalid ? 0.0 : m * p1x * neighbor.W;
 
         // Shift
         vec3 neighbor_viewdir = neighbor.view_dir[1];
