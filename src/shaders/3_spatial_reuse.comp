@@ -77,6 +77,8 @@ void main() {
         neighbor = current;
         neighbor.view_dir[1] = neighbor_viewdir;
         neighbor.path[2] = neighbor_path;
+        neighbor.sample_phat = p1x;
+        neighbor.W = neighbor.W;
 
         updateR(r, neighbor, w);
 
