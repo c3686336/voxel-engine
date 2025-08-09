@@ -41,7 +41,14 @@ int main(int argc, char** argv) {
 
     glfwInit();
 
-    Renderer renderer(1920, 1080);
+    const GLFWvidmode* vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    float xscale, yscale;
+    glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+
+    Renderer renderer(
+        static_cast<int>(vidmode->width / xscale),
+        static_cast<int>(vidmode->height / yscale)
+    );
 
     renderer.use_cubemap(
         {"res/right.jpg", "res/left.jpg", "res/top.jpg", "res/bottom.jpg",
