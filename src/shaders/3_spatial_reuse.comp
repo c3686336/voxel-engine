@@ -1,8 +1,6 @@
 #version 450 core
 #extension GL_ARB_shading_language_include : require
 
-#define N_SAMPLES 32
-
 const int N_NEIGHBORS = 3;
 const int TAXI_RADIUS = 16;
 
