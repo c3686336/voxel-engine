@@ -66,7 +66,7 @@ void main() {
             ); // phat on neighbor's domain, towards current sample
         // Invalid on invalid neighbor
 
-        float m = pix / (p1x / Mm1 + pix) / Mm; // pairwise mis
+        float m = pix / (p1x / Mm1 + pix) / Mm1; // pairwise mis
 
         float w = invalid ? 0.0 : m * p1x * neighbor.W;
 
