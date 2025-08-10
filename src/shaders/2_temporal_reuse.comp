@@ -7,6 +7,8 @@ layout(rgba32f, binding = 1) readonly uniform image2D in_img;
 
 #include "common.comp"
 
+const float confidence_weight = 15.0;
+
 void main() {
     Sample current = pixel_sample[global_index];
     Sample temporal = prev_pixel_sample[global_index];
@@ -35,7 +37,7 @@ void main() {
             m_metallicity
         );
 
-    const float m = pix * 30.0 / (p1x + pix * 30.0);
+    const float m = pix * confidence_weight / (p1x + pix * confidence_weight);
     const float w = m * p1x * temporal.W;
 
     vec3 temporal_viewdir = temporal.view_dir[1];
@@ -48,7 +50,7 @@ void main() {
     Reservoir r = Reservoir(temporal, w);
 
     {
-        float m = current.sample_phat / (current.sample_phat + pi1 * 30.0);
+        float m = current.sample_phat / (current.sample_phat + pi1 * confidence_weight);
         updateR(r, current, m * current.sample_phat * current.W);
     }
 
