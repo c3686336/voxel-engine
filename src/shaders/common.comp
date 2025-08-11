@@ -503,7 +503,7 @@ float phat_full(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, 
     // Full pdf
 
     bool shadow_result = trace_shadow(
-            pos + surface_bias_amt * vec4(L, 0.0), vec4(L, 0.0)
+            pos + surface_bias_amt * vec4(N, 0.0), vec4(L, 0.0)
         ) && !d_shadow;
 
     return shadow_result ? 0.0 : dot(textureLod(skybox, L, LOD).xyz, brdf(
