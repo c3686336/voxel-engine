@@ -126,7 +126,7 @@ private:
     CubeMap cubemap;
     Texture2D quad_texture;
 
-    float bias_amt = 0.00044f;
+    float bias_amt = 0.00187f;
     uint32_t model_select = 0;
 
     glm::vec4 albedo{0.3f, 0.5f, 0.6f, 1.0f};
