@@ -45,7 +45,7 @@ void main() {
 
         Sample neighbor = pixel_sample[sample_index];
 
-        bool invalid = neighbor.path[1].w == 0.0 || dot(neighbor.normal[0], neighbor.normal[0]) < 0.5 || isnan(neighbor.W) || isinf(neighbor.W) || neighbor.W == 0.0;
+        bool invalid = neighbor.path[1].w == 0.0 || isnan(neighbor.W) || isinf(neighbor.W) || neighbor.W == 0.0;
 
         float p1x = phat_shift(
                 neighbor, current,
