@@ -23,6 +23,7 @@ layout(location = 23) uniform bool d_pos;
 layout(location = 24) uniform bool d_weight;
 layout(location = 25) uniform bool d_shadow;
 layout(location = 26) uniform int n_samples;
+layout(location = 27) uniform float surface_bias_amt;
 
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 
@@ -502,7 +503,7 @@ float phat_full(vec4 pos, vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, 
     // Full pdf
 
     bool shadow_result = trace_shadow(
-            pos + bias_amt * vec4(L, 0.0), vec4(L, 0.0)
+            pos + surface_bias_amt * vec4(L, 0.0), vec4(L, 0.0)
         ) && !d_shadow;
 
     return shadow_result ? 0.0 : dot(textureLod(skybox, L, LOD).xyz, brdf(
