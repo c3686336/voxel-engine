@@ -137,6 +137,7 @@ private:
     bool temporal_reuse = true;
     bool spatial_reuse = true;
     bool spatial_first = true;
+    bool visibility_reuse = true;
 
     bool debug_normal_view = false;
     bool debug_pos_view = false;

@@ -61,5 +61,15 @@ void main() {
     s = r.sample_chosen;
     s.W = r.total_weight / s.sample_phat;
 
+    // Visibility reuse
+    if (v_reuse) {
+        bool shadow_result = trace_shadow(
+                s.path[2] + surface_bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+            ) && !d_shadow;
+
+        s.W = shadow_result ? 0.0 : s.W;
+        s.sample_phat = shadow_result ? 0.0 : s.sample_phat;
+    }
+
     pixel_sample[global_index] = s;
 }

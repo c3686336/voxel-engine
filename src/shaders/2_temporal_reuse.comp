@@ -21,7 +21,7 @@ void main() {
 
     const float Mm1 = 1.0;
 
-    const float p1x = phat_shift(
+    const float p1x = phat_shift_visibility(
             temporal, current,
             m_albedo.xyz,
             m_roughness,
@@ -30,7 +30,7 @@ void main() {
 
     const float pix = temporal.sample_phat;
 
-    const float pi1 = phat_shift(
+    const float pi1 = phat_shift_visibility(
             current, temporal,
             m_albedo.xyz,
             m_roughness,

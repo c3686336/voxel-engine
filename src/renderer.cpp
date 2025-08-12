@@ -186,6 +186,7 @@ bool Renderer::main_loop(
     ImGui::Checkbox("Temporal reuse?", &temporal_reuse);
     ImGui::Checkbox("Spatial reuse?", &spatial_reuse);
     ImGui::Checkbox("Spatial first?", &spatial_first);
+    ImGui::Checkbox("Visibility reuse", &visibility_reuse);
     ImGui::Checkbox("Debug: Show normal?", &debug_normal_view);
     ImGui::Checkbox("Debug: Show hit position?", &debug_pos_view);
     ImGui::Checkbox("Debug: Show UCW?", &debug_weight_view);
@@ -290,6 +291,7 @@ void Renderer::bind_everything() {
     glUniform1i(25, debug_ignore_shadow);
     glUniform1i(26, initial_sample_count);
     glUniform1f(27, surface_bias_amt);
+    glUniform1i(28, visibility_reuse);
 
     glUniform1f(13, (float)glfwGetTime());
 
