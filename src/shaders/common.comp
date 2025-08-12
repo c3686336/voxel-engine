@@ -557,7 +557,6 @@ float phat_shift(Sample f, Sample t, vec3 albedo, float roughness, float metalli
             albedo,
             roughness,
             metallicity
-
         );
     }
 
