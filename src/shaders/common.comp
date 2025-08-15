@@ -297,7 +297,7 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
             cur_level = max(j + 1, level); // Start from the parent next time
 
             if (index == 0) {
-                // The result is stack[j]
+                // The result is stack[j + 1]
                 // j being level does not matter because that means the root is leaf
                 result = QueryResult(j, nodes[stack[j + 1] + svodag_index]);
 
@@ -348,26 +348,28 @@ bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bia
     stack[level + 1] = 0;
     uint index = 0;
     uint cur_level = level;
-    bool result = false;
+    bool result;
+    uint at_level;
 
     do {
         uvec3 pos_bitmask = pos_to_bitmask(cur_pos, level);
 
-        for (uint j = level; j >= 0; j--) {
+        result = false;
+        for (uint j = cur_level; j >= 0; j--) {
             index = bitmask_to_index(pos_bitmask, j);
             index = nodes[stack[j + 1] + svodag_index].addr[index];
             stack[j] = index; // index has previous node index
             cur_level = max(j + 1, level); // Start from the parent next time
 
             if (index == 0) {
-                // The result is stack[j]
+                // The result is stack[j + 1]
                 // j being level does not matter because that means the root is leaf
                 result = nodes[stack[j + 1] + svodag_index].mat_id != 0;
+                at_level = j;
                 break;
             }
         }
 
-        uint at_level = cur_level - 1;
         float size = level_to_size(at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
