@@ -144,7 +144,7 @@ private:
     bool debug_weight_view = false;
     bool debug_ignore_shadow = false;
 
-    int initial_sample_count = 8;
+    int initial_sample_count = 5;
 };
 
 #endif
