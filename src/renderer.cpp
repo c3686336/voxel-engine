@@ -211,16 +211,19 @@ bool Renderer::main_loop(
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
-        micro_restir_temporal_reuse.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
+        if (temporal_reuse) {
+            micro_restir_temporal_reuse.use();
+            bind_everything();
+            glDispatchCompute(width / 8, height / 8, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
     } else {
-        micro_restir_temporal_reuse.use();
-        bind_everything();
-        glDispatchCompute(width / 8, height / 8, 1);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        if (temporal_reuse) {
+            micro_restir_temporal_reuse.use();
+            bind_everything();
+            glDispatchCompute(width / 8, height / 8, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
 
         if (spatial_reuse) {
             micro_restir_spatial_reuse.use();
