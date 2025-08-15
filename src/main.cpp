@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
 
     SPDLOG_INFO("Creating SVODAG");
 
-    size_t depth = 6;
+    size_t depth = 8;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1 << depth;

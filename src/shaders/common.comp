@@ -26,7 +26,7 @@ layout(location = 26) uniform int n_samples;
 layout(location = 27) uniform float surface_bias_amt;
 layout(location = 28) uniform bool v_reuse;
 
-uint[9] stack;
+uint[10] stack;
 
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 

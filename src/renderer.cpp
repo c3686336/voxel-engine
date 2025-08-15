@@ -128,7 +128,7 @@ Renderer::Renderer(int width, int height)
     );
 
     SPDLOG_INFO("Creating SSBO");
-    svodag_ssbo = AppendBuffer<SerializedNode, GL_SHADER_STORAGE_BUFFER>{10000};
+    svodag_ssbo = AppendBuffer<SerializedNode, GL_SHADER_STORAGE_BUFFER>{30000};
     metadata_ssbo = VectorBuffer<SvodagMetaData, GL_SHADER_STORAGE_BUFFER>{100};
     materials = AppendBuffer<Material, GL_SHADER_STORAGE_BUFFER>{1024};
     materials.push_back(Material{});
