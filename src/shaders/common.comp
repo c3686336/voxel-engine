@@ -26,6 +26,8 @@ layout(location = 26) uniform int n_samples;
 layout(location = 27) uniform float surface_bias_amt;
 layout(location = 28) uniform bool v_reuse;
 
+uint[10] stack;
+
 uint seed = (floatBitsToUint(additional_seed) + gl_GlobalInvocationID.x) * gl_GlobalInvocationID.y + floatBitsToUint(additional_seed) / gl_GlobalInvocationID.x;
 
 uint global_index = gl_GlobalInvocationID.y * width + gl_GlobalInvocationID.x;
@@ -278,8 +280,30 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
     bvec3 limiting_axis_min = entry_norm;
     bvec3 limiting_axis_max = entry_norm;
 
+    stack[level + 1] = 0;
+    uint cur_level = level;
+
+    uint index = 0;
+    QueryResult result;
+
     do {
-        QueryResult result = query(svodag_index, cur_pos, level);
+        uvec3 pos_bitmask = pos_to_bitmask(cur_pos, level);
+        // QueryResult result = query(svodag_index, cur_pos, level);
+        result = QueryResult(0, nodes[index + svodag_index]);
+        for (uint j = cur_level; j >= 0; j--) {
+            index = bitmask_to_index(pos_bitmask, j);
+            index = nodes[stack[j + 1] + svodag_index].addr[index];
+            stack[j] = index; // index has previous node index
+            cur_level = max(j + 1, level); // Start from the parent next time
+
+            if (index == 0) {
+                // The result is stack[j]
+                // j being level does not matter because that means the root is leaf
+                result = QueryResult(j, nodes[stack[j + 1] + svodag_index]);
+
+                break;
+            }
+        }
 
         float size = level_to_size(result.at_level, level);
 
@@ -321,11 +345,29 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
 
 bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3 dir, vec3 dir_inv) {
     uint iters = 0;
+    stack[level + 1] = 0;
+    uint index = 0;
+    uint cur_level = level;
+    bool result = false;
 
     do {
-        uint at_level;
-        bool result = query_shadow(svodag_index, cur_pos, level, at_level);
+        uvec3 pos_bitmask = pos_to_bitmask(cur_pos, level);
 
+        for (uint j = level; j >= 0; j--) {
+            index = bitmask_to_index(pos_bitmask, j);
+            index = nodes[stack[j + 1] + svodag_index].addr[index];
+            stack[j] = index; // index has previous node index
+            cur_level = max(j + 1, level); // Start from the parent next time
+
+            if (index == 0) {
+                // The result is stack[j]
+                // j being level does not matter because that means the root is leaf
+                result = nodes[stack[j + 1] + svodag_index].mat_id != 0;
+                break;
+            }
+        }
+
+        uint at_level = cur_level - 1;
         float size = level_to_size(at_level, level);
 
         vec3 cur_vox_start = snap_pos_down(
