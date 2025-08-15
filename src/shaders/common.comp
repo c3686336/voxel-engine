@@ -243,7 +243,7 @@ QueryResult query(uint svodag_index, uvec3 bitmask, uint max_level) {
     }
 
     // Just to be safe
-    return QueryResult(0, nodes[n_idx]);
+    return QueryResult(0, nodes[n_idx + svodag_index]);
 }
 
 bool query_shadow(uint svodag_index, uvec3 bitmask, uint max_level, out uint at_level) {
