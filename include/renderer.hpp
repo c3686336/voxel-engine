@@ -113,6 +113,14 @@ private:
         Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("4_shade.comp"))
     };
 
+    Program restir_before_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("before_reuse.comp")
+    )};
+
+    Program restir_after_reuse = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("after_reuse.comp"))
+    };
+
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
@@ -143,7 +151,8 @@ private:
     bool debug_pos_view = false;
     bool debug_weight_view = false;
     bool debug_ignore_shadow = false;
-    bool debug_visualize_shadow = true;
+    bool debug_visualize_shadow = false;
+    bool megakernel = true;
 
     int initial_sample_count = 5;
 };

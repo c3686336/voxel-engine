@@ -1,0 +1,98 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+#include "common.comp"
+
+void main() {
+    vec4 frag_color = vec4(0.0);
+    vec2 frag_pos = vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0;
+
+    vec4 cam_ray_origin = vec4(camera_pos, 1.0);
+    vec4 cam_ray_dir = normalize(vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0));
+
+    vec4 first_hit_pos;
+    QueryResult first_hit_query;
+    vec3 first_hit_normal;
+    uint first_hit_index;
+
+    bool result = trace(
+            cam_ray_origin, cam_ray_dir,
+            first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
+        );
+
+    first_hit_pos = result ? first_hit_pos : cam_ray_dir;
+
+    Sample s = empty_sample();
+    s.path[0] = vec4(camera_pos, 1.0);
+    s.path[1] = first_hit_pos;
+    s.view_dir[0] = -cam_ray_dir.xyz;
+    s.view_dir[1] = -cam_ray_dir.xyz;
+    s.normal[0] = first_hit_normal;
+
+    if (s.path[1].w == 0.0) {
+        s.path[2] = s.path[1];
+        pixel_sample[global_index] = s;
+
+        return;
+    }
+
+    vec3 dir;
+    float sample_weight;
+    sample_hemisphere(s.normal[0], dir, sample_weight);
+
+    s.path[2] = vec4(dir, 0.0);
+    s.view_dir[1] = -dir;
+    s.W = sample_weight;
+
+    float m = 1.0 / float(n_samples);
+    float sample_phat = phat(
+            s,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    s.sample_phat = sample_phat;
+    Reservoir r = Reservoir(s, m * s.W * sample_phat);
+
+    for (int i = 0; i < n_samples - 1; i++) {
+        vec3 dir;
+        float sample_weight;
+        sample_hemisphere(s.normal[0], dir, sample_weight);
+
+        s.path[2] = vec4(dir, 0.0);
+        s.view_dir[1] = -dir;
+        s.W = sample_weight;
+
+        float m = 1.0 / float(n_samples);
+        float sample_phat = phat(
+                s,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        s.sample_phat = sample_phat;
+
+        updateR(r, s, m * s.W * sample_phat);
+    }
+
+    s = r.sample_chosen;
+    s.W = r.total_weight / s.sample_phat;
+
+    // Visibility reuse
+    if (v_reuse) {
+        bool shadow_result = trace_shadow(
+                s.path[2] + surface_bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+            ) && !d_shadow;
+
+        s.W = shadow_result ? 0.0 : s.W;
+        s.sample_phat = shadow_result ? 0.0 : s.sample_phat;
+    }
+
+    pixel_sample[global_index] = s;
+}

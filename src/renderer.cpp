@@ -194,52 +194,65 @@ bool Renderer::main_loop(
     ImGui::Checkbox(
         "Debug: Visualize shadow trace result?", &debug_visualize_shadow
     );
+    ImGui::Checkbox("Use megakernel?", &megakernel);
     ImGui::End();
 
-    micro_restir_first_hit.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    if (megakernel) {
+        restir_before_reuse.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    micro_restir_sample_generation.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    if (spatial_first) {
-        if (spatial_reuse) {
-            micro_restir_spatial_reuse.use();
-            bind_everything();
-            glDispatchCompute(width / 8, height / 8, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        }
-
-        if (temporal_reuse) {
-            micro_restir_temporal_reuse.use();
-            bind_everything();
-            glDispatchCompute(width / 8, height / 8, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        }
+        restir_after_reuse.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     } else {
-        if (temporal_reuse) {
-            micro_restir_temporal_reuse.use();
-            bind_everything();
-            glDispatchCompute(width / 8, height / 8, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        micro_restir_first_hit.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        micro_restir_sample_generation.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        if (spatial_first) {
+            if (spatial_reuse) {
+                micro_restir_spatial_reuse.use();
+                bind_everything();
+                glDispatchCompute(width / 8, height / 8, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            }
+
+            if (temporal_reuse) {
+                micro_restir_temporal_reuse.use();
+                bind_everything();
+                glDispatchCompute(width / 8, height / 8, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            }
+        } else {
+            if (temporal_reuse) {
+                micro_restir_temporal_reuse.use();
+                bind_everything();
+                glDispatchCompute(width / 8, height / 8, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            }
+
+            if (spatial_reuse) {
+                micro_restir_spatial_reuse.use();
+                bind_everything();
+                glDispatchCompute(width / 8, height / 8, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            }
         }
 
-        if (spatial_reuse) {
-            micro_restir_spatial_reuse.use();
-            bind_everything();
-            glDispatchCompute(width / 8, height / 8, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        }
+        micro_restir_shade.use();
+        bind_everything();
+        glDispatchCompute(width / 8, height / 8, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
-
-    micro_restir_shade.use();
-    bind_everything();
-    glDispatchCompute(width / 8, height / 8, 1);
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     quad_renderer.use();
     vao.bind();
