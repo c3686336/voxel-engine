@@ -388,21 +388,15 @@ bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bia
             return true;
         }
 
-        bvec3 limiting_axis_min, limiting_axis_max;
-        vec2 minmax = slab_test(
-                cur_vox_start,
-                cur_vox_end,
-                cur_pos,
-                dir_inv,
-                limiting_axis_min,
-                limiting_axis_max
-            );
+        vec3 target_plains = mix(cur_vox_start, cur_vox_end, greaterThan(dir, vec3(0.0)));
+        vec3 times = (target_plains - cur_pos) * dir_inv;
+        float t = min(times.x, min(times.y, times.z));
+        bvec3 hit_axis = equal(times, vec3(t));
 
-        if (minmax.y <= 0.0f) return true;
-        minmax = max(vec2(0.0), minmax);
+        t = max(0.0, t);
 
         uvec3 pos_bitmask_prev = pos_to_bitmask(cur_pos, level);
-        cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0 ? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
+        cur_pos += t * dir + bias + vec3(size) * 0.01 * (t == 0.0 ? vec3(hit_axis) * sign(dir) : vec3(0.0));
         uvec3 pos_bitmask_now = pos_to_bitmask(cur_pos, level);
 
         uvec3 lsb = clamp(findMSB(pos_bitmask_now ^ pos_bitmask_prev), 0, level);
