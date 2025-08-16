@@ -25,6 +25,7 @@ layout(location = 25) uniform bool d_shadow;
 layout(location = 26) uniform int n_samples;
 layout(location = 27) uniform float surface_bias_amt;
 layout(location = 28) uniform bool v_reuse;
+layout(location = 29) uniform bool d_show_shadow;
 
 uint[10] stack;
 
