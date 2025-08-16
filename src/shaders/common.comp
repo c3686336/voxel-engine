@@ -295,7 +295,6 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
             index = bitmask_to_index(pos_bitmask, j);
             index = nodes[stack[j + 1] + svodag_index].addr[index];
             stack[j] = index; // index has previous node index
-            cur_level = max(j + 1, level); // Start from the parent next time
 
             if (index == 0) {
                 // The result is stack[j + 1]
@@ -335,7 +334,12 @@ bool raymarch_model(uint svodag_index, uint level, vec3 cur_pos, vec3 bias, vec3
 
         minmax = max(vec2(0.0, 0.0), minmax);
 
+        uvec3 pos_bitmask_prev = pos_to_bitmask(cur_pos, level);
         cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0 ? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
+        uvec3 pos_bitmask_now = pos_to_bitmask(cur_pos, level);
+
+        uvec3 lsb = clamp(findMSB(pos_bitmask_now ^ pos_bitmask_prev), 0, level);
+        cur_level = min(max(lsb.x, max(lsb.y, lsb.z)) + 1, level);
 
         iters++;
     }
@@ -360,7 +364,6 @@ bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bia
             index = bitmask_to_index(pos_bitmask, j);
             index = nodes[stack[j + 1] + svodag_index].addr[index];
             stack[j] = index; // index has previous node index
-            cur_level = max(j + 1, level); // Start from the parent next time
 
             if (index == 0) {
                 // The result is stack[j + 1]
@@ -385,16 +388,25 @@ bool raymarch_model_shadow(uint svodag_index, uint level, vec3 cur_pos, vec3 bia
             return true;
         }
 
-        vec2 minmax = slab_test_shadow(
+        bvec3 limiting_axis_min, limiting_axis_max;
+        vec2 minmax = slab_test(
                 cur_vox_start,
                 cur_vox_end,
                 cur_pos,
-                dir_inv
+                dir_inv,
+                limiting_axis_min,
+                limiting_axis_max
             );
 
-        if (minmax.y <= 0.0f) return false;
+        if (minmax.y <= 0.0f) return true;
+        minmax = max(vec2(0.0), minmax);
 
-        cur_pos += minmax.y * dir + bias;
+        uvec3 pos_bitmask_prev = pos_to_bitmask(cur_pos, level);
+        cur_pos += minmax.y * dir + bias + vec3(size) * 0.01 * (minmax.y == 0.0 ? vec3(limiting_axis_max) * sign(dir) : vec3(0.0));
+        uvec3 pos_bitmask_now = pos_to_bitmask(cur_pos, level);
+
+        uvec3 lsb = clamp(findMSB(pos_bitmask_now ^ pos_bitmask_prev), 0, level);
+        cur_level = min(max(lsb.x, max(lsb.y, lsb.z)) + 1, level);
 
         iters++;
     }
