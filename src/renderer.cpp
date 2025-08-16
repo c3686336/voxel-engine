@@ -191,6 +191,9 @@ bool Renderer::main_loop(
     ImGui::Checkbox("Debug: Show hit position?", &debug_pos_view);
     ImGui::Checkbox("Debug: Show UCW?", &debug_weight_view);
     ImGui::Checkbox("Debug: Ignore shadow result?", &debug_ignore_shadow);
+    ImGui::Checkbox(
+        "Debug: Visualize shadow trace result?", &debug_visualize_shadow
+    );
     ImGui::End();
 
     micro_restir_first_hit.use();
@@ -295,6 +298,7 @@ void Renderer::bind_everything() {
     glUniform1i(26, initial_sample_count);
     glUniform1f(27, surface_bias_amt);
     glUniform1i(28, visibility_reuse);
+    glUniform1i(29, debug_visualize_shadow);
 
     glUniform1f(13, (float)glfwGetTime());
 

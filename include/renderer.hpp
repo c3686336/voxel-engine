@@ -143,6 +143,7 @@ private:
     bool debug_pos_view = false;
     bool debug_weight_view = false;
     bool debug_ignore_shadow = false;
+    bool debug_visualize_shadow = true;
 
     int initial_sample_count = 5;
 };
