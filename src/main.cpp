@@ -45,10 +45,9 @@ int main(int argc, char** argv) {
     float xscale, yscale;
     glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
 
-    Renderer renderer(
-        static_cast<int>(vidmode->width / 1.75),
-        static_cast<int>(vidmode->height / 1.75)
-    );
+    SPDLOG_INFO("Content scale x: {}, y: {}", xscale, yscale);
+
+    Renderer renderer(static_cast<int>(1920), static_cast<int>(1080));
 
     renderer.use_cubemap(
         {"res/right.jpg", "res/left.jpg", "res/top.jpg", "res/bottom.jpg",
@@ -62,7 +61,7 @@ int main(int argc, char** argv) {
 
     SPDLOG_INFO("Creating SVODAG");
 
-    size_t depth = 8;
+    size_t depth = 6;
     SvoDag svodag{depth}; // width = 256;
 
     long limit = 1 << depth;
@@ -94,9 +93,9 @@ int main(int argc, char** argv) {
     SPDLOG_INFO("Serialized SVODAG");
 
     std::vector<entt::entity> balls;
-    for (int i = 0; i < 1; i++) {
-        for (int j = 0; j < 1; j++) {
-            for (int k = 0; k < 1; k++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
                 // 1000 balls
 
                 auto ball = registry.create();
