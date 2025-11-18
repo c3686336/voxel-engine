@@ -1,0 +1,162 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+#define N_SAMPLES 64
+
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
+layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
+layout(location = 20) uniform bool t_reuse;
+
+#include "common.comp"
+
+void main() {
+    vec4 frag_color = vec4(0.0);
+    vec2 frag_pos = vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0;
+
+    vec4 cam_ray_origin = vec4(camera_pos, 1.0);
+    vec4 cam_ray_dir = normalize(vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0));
+
+    vec4 first_hit_pos;
+    QueryResult first_hit_query;
+    vec3 first_hit_normal;
+    uint first_hit_index;
+
+    bool result = trace(
+            cam_ray_origin, cam_ray_dir,
+            first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
+        );
+
+    Sample s = empty_sample();
+
+    s.path[0] = cam_ray_origin;
+    s.view_dir[0] = -cam_ray_dir.xyz;
+
+    if (result) {
+        s.path[1] = first_hit_pos;
+        s.normal[0] = first_hit_normal;
+        s.mat_index[0] = 0; // TODO
+    } else {
+        for (int i = 1; i < s.path.length(); i++) {
+            s.path[i] = cam_ray_dir;
+        }
+    }
+
+    // pixel_sample[global_index] = s;
+    Sample path = s;
+
+    if (path.path[1].w == .0) {
+        pixel_sample[global_index] = path;
+        return;
+    }
+
+    vec3 N = path.normal[0];
+    vec3 V = path.view_dir[0];
+
+    Reservoir r = new_reservoir();
+    for (int i = 0; i < N_SAMPLES; i++) {
+        vec3 dir;
+        float sample_weight;
+        sample_hemisphere(N, dir, sample_weight);
+
+        Sample s = path;
+        s.path[2] = vec4(dir, 0.0);
+        s.view_dir[1] = -dir;
+        s.W = sample_weight;
+
+        float m = 1.0 / float(N_SAMPLES);
+
+        float sample_phat = phat1(
+                s.path[1],
+                N,
+                V,
+                -s.view_dir[1],
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+        float w = sample_phat * s.W * m;
+        s.sample_phat = sample_phat;
+
+        updateR(r, s, w);
+    }
+
+    r.sample_chosen.W = r.total_weight / r.sample_chosen.sample_phat;
+
+    bool shadow_result = trace_shadow(
+            s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0)
+        );
+
+    r.sample_chosen.W = shadow_result ? 0.0 : r.sample_chosen.W;
+    r.sample_chosen.sample_phat = shadow_result ? 0.0 : r.sample_chosen.sample_phat;
+
+    Sample temporal = pixel_sample[global_index];
+    Sample current = r.sample_chosen;
+    if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0 || dot(temporal.normal[0], current.normal[0]) < 0.5 || isnan(temporal.W) || isinf(temporal.W)) {
+        pixel_sample[global_index] = current;
+    } else {
+        // Temporal reuse
+        // TODO: Incorporate motion vector
+
+        Reservoir r = new_reservoir();
+        const float Mm1 = 1.0;
+
+        const float p1x = phat1(
+                current.path[1],
+                current.normal[0],
+                current.view_dir[0],
+                -temporal.view_dir[1].xyz,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        const float pix = temporal.sample_phat;
+
+        const float pi1 = phat1(
+                temporal.path[1],
+                temporal.normal[0],
+                temporal.view_dir[0],
+                -current.view_dir[1].xyz,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            );
+
+        const float m = pix * 30.0 / (p1x + pix * 30.0);
+        const float w = m * p1x; // * temporal.W;
+
+        vec3 temporal_viewdir = temporal.view_dir[1];
+        vec4 temporal_path = temporal.path[2];
+        temporal = current;
+        temporal.view_dir[1] = temporal_viewdir;
+        temporal.path[2] = temporal_path;
+
+        updateR(r, temporal, w);
+
+        {
+            float m = current.sample_phat / (current.sample_phat + pi1 * 30.0);
+            updateR(r, current, m * current.sample_phat * current.W);
+        }
+
+        Sample result = r.sample_chosen;
+        result.W = r.total_weight / (result.sample_phat);
+
+        pixel_sample[global_index] = result;
+    }
+}

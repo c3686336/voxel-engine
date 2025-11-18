@@ -1,0 +1,54 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
+layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
+
+#include "common.comp"
+
+void main() {
+    Sample s = prev_pixel_sample[global_index];
+
+    // When generalizing to GI, this is the stopping criteria for the loop
+    if (s.path[1].w == 0.0) {
+        imageStore(out_img, tcoord, texture(skybox, s.path[1].xyz)); // 0 bounce
+    } else {
+        vec4 shadow_hpos;
+        QueryResult shadow_q;
+        vec3 shadow_normal;
+        uint shadow_mi;
+        bool shadow_result = trace(
+                s.path[1] + bias_amt * vec4(s.normal[0], 0.0), vec4(-s.view_dir[1], 0.0), shadow_hpos, shadow_q, shadow_normal, shadow_mi
+            );
+
+        vec3 frag_color =
+            shadow_result ?
+            vec3(0.0) :
+            s.W * texture(skybox, s.path[2].xyz).xyz * brdf(
+                    s.normal[0],
+                    s.view_dir[0],
+                    -s.view_dir[1],
+                    s.albedo[0],
+                    s.roughness[0],
+                    s.metallicity[0]
+                );
+
+        imageStore(out_img, tcoord, vec4(frag_color, 1.0));
+    }
+}

@@ -16,6 +16,7 @@ Window::Window(int width, int height, const char* name) noexcept
     window = glfwCreateWindow(width, height, name, NULL, NULL);
 
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(0);
 
     glbinding::initialize(glfwGetProcAddress);
 }

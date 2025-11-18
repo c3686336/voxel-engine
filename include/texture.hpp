@@ -19,6 +19,9 @@ public:
     virtual void parameteri(gl::GLenum property_name, gl::GLint parameter);
     virtual void parameterf(gl::GLenum property_name, gl::GLfloat parameter);
     virtual void bind(gl::GLuint unit);
+    virtual void bind_image(
+        gl::GLuint unit, gl::GLint level, gl::GLenum access, gl::GLenum format
+    );
 
     Texture(const Texture&) = delete;
     Texture& operator=(const Texture&) = delete;
@@ -49,6 +52,19 @@ public:
             glGenerateTextureMipmap(texture);
         }
     }
+
+    inline Texture2D(
+        gl::GLsizei levels, gl::GLenum internal_format, gl::GLenum format,
+        gl::GLsizei width, gl::GLsizei height, bool generate_mips
+    ) {
+        using namespace gl;
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+        glTextureStorage2D(texture, levels, internal_format, width, height);
+        if (generate_mips) {
+            glGenerateTextureMipmap(texture);
+        }
+    }
 };
 
 class CubeMap : public Texture {
@@ -58,13 +74,14 @@ public:
     template <typename T>
     CubeMap(
         std::array<std::span<T>, 6> images, gl::GLenum internal_format,
-        gl::GLenum format, gl::GLsizei width
+        gl::GLenum format, gl::GLsizei width, bool generate_mips = true,
+        gl::GLuint levels = 7
     ) {
         using namespace gl;
 
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &texture);
 
-        glTextureStorage2D(texture, 1, internal_format, width, width);
+        glTextureStorage2D(texture, levels, internal_format, width, width);
 
         glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -75,6 +92,10 @@ public:
                 texture, 0, 0, 0, idx, width, width, 1, format,
                 GL_UNSIGNED_BYTE, image.data()
             );
+        }
+
+        if (generate_mips) {
+            glGenerateTextureMipmap(texture);
         }
     }
 };

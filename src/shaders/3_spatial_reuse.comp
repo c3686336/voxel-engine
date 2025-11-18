@@ -1,0 +1,95 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+const int N_NEIGHBORS = 2;
+const int TAXI_RADIUS = 10;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+#include "common.comp"
+
+void main() {
+    // TODO: Account for camera and object movement
+
+    Sample current = pixel_sample[global_index];
+
+    if (current.W == 0.0) {
+        return;
+    }
+
+    float mis_canonical = 0.0;
+    Reservoir r = new_reservoir();
+
+    float p11 = current.sample_phat;
+
+    const float Mm1 = float(N_NEIGHBORS);
+    const float M = Mm1 + 1.0;
+
+    // Spatial reuse
+    // TODO: parallelize this
+    for (int i = 0; i < N_NEIGHBORS; i++) {
+        uint neighbor_x_min = max(int(gl_GlobalInvocationID.x) - TAXI_RADIUS, 0);
+        uint neighbor_x_max = min(neighbor_x_min + 2 * TAXI_RADIUS, width - 1);
+        neighbor_x_min = neighbor_x_max - 2 * TAXI_RADIUS;
+
+        uint neighbor_y_min = max(int(gl_GlobalInvocationID.y) - TAXI_RADIUS, 0);
+        uint neighbor_y_max = min(neighbor_y_min + 2 * TAXI_RADIUS, height - 1);
+        neighbor_y_min = neighbor_y_max - 2 * TAXI_RADIUS;
+
+        uvec2 offset = uvec2(randv2() * 2.0 * float(TAXI_RADIUS));
+
+        uvec2 sample_pos = uvec2(neighbor_x_min, neighbor_y_min) + offset;
+        uint sample_index = sample_pos.y * width + sample_pos.x;
+
+        Sample neighbor = pixel_sample[sample_index];
+
+        bool invalid = neighbor.path[1].w == 0.0 || isnan(neighbor.W) || isinf(neighbor.W) || neighbor.W == 0.0;
+
+        float p1x = phat_shift(
+                neighbor, current,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            ); // phat on current domain, towards neighbor's sample
+        // Valid on invalid neighbor
+
+        float pix = neighbor.sample_phat;
+        // Valid on invalid neighbor
+
+        float pi1 = invalid ? 0.0 : phat_shift(
+                current, neighbor,
+                m_albedo.xyz,
+                m_roughness,
+                m_metallicity
+            ); // phat on neighbor's domain, towards current sample
+        // Invalid on invalid neighbor
+
+        float m = pix / (p1x / Mm1 + pix) / Mm1; // pairwise mis
+
+        float w = invalid ? 0.0 : m * p1x * neighbor.W;
+
+        // Shift
+        vec3 neighbor_viewdir = neighbor.view_dir[1];
+        vec4 neighbor_path = neighbor.path[2];
+        neighbor = current;
+        neighbor.view_dir[1] = neighbor_viewdir;
+        neighbor.path[2] = neighbor_path;
+        neighbor.sample_phat = p1x;
+        neighbor.W = neighbor.W;
+
+        updateR(r, neighbor, w);
+
+        mis_canonical += p11 / (p11 / Mm1 + pi1) / Mm1;
+    }
+
+    mis_canonical /= Mm1;
+
+    updateR(r, current, mis_canonical * p11 * current.W);
+
+    Sample s = r.sample_chosen;
+    s.W = r.total_weight / s.sample_phat;
+
+    pixel_sample[global_index] = s;
+}

@@ -1,1 +1,1 @@
-shaders = files('simple.vert', 'simple.frag')
+shaders = files('simple.vert', 'simple.frag', 'draw_texture.frag', 'restirdi.comp', 'common.comp', 'first_hit.comp', 'initial_samples.comp', 'shade.comp', 'reuse.comp', '0_first_hit.comp', '1_sample_generation.comp', '2_temporal_reuse.comp', '3_spatial_reuse.comp', '4_shade.comp', 'before_reuse.comp', 'after_reuse.comp')

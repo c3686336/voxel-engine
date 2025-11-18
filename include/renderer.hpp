@@ -44,10 +44,7 @@ typedef SimpleMaterial Material;
 
 class Renderer {
 public:
-    Renderer(
-        const std::filesystem::path& vs_path,
-        const std::filesystem::path& fs_path, int width, int height
-    );
+    Renderer(int width, int height);
 
     bool main_loop(
         entt::registry& registry, const std::function<void(Window&, Camera&)> f
@@ -78,6 +75,8 @@ public:
     void use_cubemap(const std::array<std::filesystem::path, 6>&);
 
 private:
+    void bind_everything();
+
     int width;
     int height;
 
@@ -85,27 +84,77 @@ private:
     Buffer<gl::GL_ARRAY_BUFFER> vbo;
     VertexArray vao;
     Buffer<gl::GL_ELEMENT_ARRAY_BUFFER> ibo;
-    Program program;
+
+    Program quad_renderer = Program{
+        Shader<gl::GL_VERTEX_SHADER>(std::filesystem::path("simple.vert")),
+        Shader<gl::GL_FRAGMENT_SHADER>(
+            std::filesystem::path("draw_texture.frag")
+        )
+    };
+
+    Program micro_restir_first_hit = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("0_first_hit.comp"))
+    };
+
+    Program micro_restir_sample_generation =
+        Program{Shader<gl::GL_COMPUTE_SHADER>(
+            std::filesystem::path("1_sample_generation.comp")
+        )};
+
+    Program micro_restir_temporal_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("2_temporal_reuse.comp")
+    )};
+
+    Program micro_restir_spatial_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("3_spatial_reuse.comp")
+    )};
+
+    Program micro_restir_shade = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("4_shade.comp"))
+    };
+
+    Program restir_before_reuse = Program{Shader<gl::GL_COMPUTE_SHADER>(
+        std::filesystem::path("before_reuse.comp")
+    )};
+
+    Program restir_after_reuse = Program{
+        Shader<gl::GL_COMPUTE_SHADER>(std::filesystem::path("after_reuse.comp"))
+    };
 
     AppendBuffer<SerializedNode, gl::GL_SHADER_STORAGE_BUFFER> svodag_ssbo;
     VectorBuffer<SvodagMetaData, gl::GL_SHADER_STORAGE_BUFFER> metadata_ssbo;
     AppendBuffer<Material, gl::GL_SHADER_STORAGE_BUFFER> materials;
 
-    std::array<ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER>, 2>
-        prev_reservoirs;
-    int reservoir_index;
+    ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER> reservoirs;
+    ImmutableBuffer<gl::GL_SHADER_STORAGE_BUFFER> prev_reservoirs;
     bool is_first_frame = true;
 
     Camera camera;
 
     CubeMap cubemap;
+    Texture2D quad_texture;
 
     float bias_amt = 0.00044f;
+    float surface_bias_amt = 0.00187f;
     uint32_t model_select = 0;
 
     glm::vec4 albedo{0.3f, 0.5f, 0.6f, 1.0f};
     float metallicity = 0.0;
     float roughness = 0.5;
+
+    bool temporal_reuse = true;
+    bool spatial_reuse = true;
+    bool spatial_first = true;
+    bool visibility_reuse = true;
+
+    bool debug_normal_view = false;
+    bool debug_pos_view = false;
+    bool debug_weight_view = false;
+    bool debug_ignore_shadow = false;
+    bool debug_visualize_shadow = false;
+    bool megakernel = true;
+
+    int initial_sample_count = 5;
 };
 
 #endif

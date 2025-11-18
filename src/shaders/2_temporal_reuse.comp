@@ -1,0 +1,61 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) readonly uniform image2D in_img;
+
+#include "common.comp"
+
+const float confidence_weight = 15.0;
+
+void main() {
+    Sample current = pixel_sample[global_index];
+    Sample temporal = prev_pixel_sample[global_index];
+
+    if (is_first_frame || !t_reuse || temporal.path[1].w == 0.0 || dot(temporal.normal[0], current.normal[0]) < 0.5 || isnan(temporal.W) || isinf(temporal.W)) {
+        return;
+    }
+    // Temporal reuse
+    // TODO: Incorporate motion vector
+
+    const float Mm1 = 1.0;
+
+    const float p1x = phat_shift(
+            temporal, current,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    const float pix = temporal.sample_phat;
+
+    const float pi1 = phat_shift(
+            current, temporal,
+            m_albedo.xyz,
+            m_roughness,
+            m_metallicity
+        );
+
+    const float m = pix * confidence_weight / (p1x + pix * confidence_weight);
+    const float w = m * p1x * temporal.W;
+
+    vec3 temporal_viewdir = temporal.view_dir[1];
+    vec4 temporal_path = temporal.path[2];
+    temporal = current;
+    temporal.view_dir[1] = temporal_viewdir;
+    temporal.path[2] = temporal_path;
+    temporal.sample_phat = p1x;
+
+    Reservoir r = Reservoir(temporal, w);
+
+    {
+        float m = current.sample_phat / (current.sample_phat + pi1 * confidence_weight);
+        updateR(r, current, m * current.sample_phat * current.W);
+    }
+
+    Sample result = r.sample_chosen;
+    result.W = r.total_weight / (result.sample_phat);
+
+    pixel_sample[global_index] = result;
+}

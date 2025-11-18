@@ -1,0 +1,121 @@
+#version 450 core
+#extension GL_ARB_shading_language_include : require
+
+#define N_SAMPLES 32
+
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+layout(rgba32f, binding = 1) writeonly uniform image2D out_img;
+
+layout(location = 1) uniform vec3 camera_pos;
+layout(location = 2) uniform vec3 camera_dir;
+layout(location = 5) uniform vec3 camera_right;
+layout(location = 4) uniform vec3 camera_up;
+layout(location = 6) uniform float bias_amt;
+layout(location = 8) uniform uint n_models;
+layout(location = 9) uniform vec4 m_albedo;
+layout(location = 10) uniform float m_metallicity;
+layout(location = 11) uniform float m_roughness;
+layout(location = 12) uniform samplerCube skybox;
+layout(location = 13) uniform float additional_seed;
+layout(location = 15) uniform int width;
+layout(location = 16) uniform int height;
+layout(location = 17) uniform bool is_first_frame;
+
+#include "common.comp"
+
+void main() {
+    vec4 frag_color = vec4(0.0);
+    ivec2 tcoord = ivec2(gl_GlobalInvocationID.xy);
+    vec2 frag_pos = vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0;
+
+    vec4 cam_ray_origin = vec4(camera_pos, 1.0);
+    vec4 cam_ray_dir = normalize(vec4(frag_pos.x * camera_right + frag_pos.y * camera_up + camera_dir, 0.0));
+
+    vec4 first_hit_pos;
+    QueryResult first_hit_query;
+    vec3 first_hit_normal;
+    uint first_hit_index;
+
+    bool result = trace(
+            cam_ray_origin, cam_ray_dir,
+            first_hit_pos, first_hit_query, first_hit_normal, first_hit_index
+        );
+
+    frag_color.w = 1.0;
+
+    if (result) {
+        vec3 N = first_hit_normal;
+        vec3 V = -cam_ray_dir.xyz;
+
+        // Simple RIS pass;
+        Reservoir r = new_reservoir();
+        for (int i = 0; i < N_SAMPLES; i++) {
+            Sample s = sample_hemisphere(N, cam_ray_origin, first_hit_pos);
+            float m = 1.0 / float(N_SAMPLES);
+
+            float w = phat1(
+                    s.path[1],
+                    N,
+                    V,
+                    s.path[2].xyz,
+                    m_albedo.xyz,
+                    m_roughness,
+                    m_metallicity
+                ) * s.W * m;
+
+            updateR(r, s, w);
+        }
+
+        // Spatiotemporal reuse
+        ivec2 window_coord = ivec2(gl_GlobalInvocationID.xy);
+
+        Reservoir r_st = new_reservoir();
+        if (!is_first_frame) { // Skipping check for border pixels seemingly doesn't matter
+            for (int i = -2; i < 3; i++) {
+                for (int j = -2; j < 3; j++) {
+                    Sample s = in_samples[width * (window_coord.y + i) + window_coord.x + j];
+
+                    float m = 1.0 / 25.0; // For now
+                    float w = phat1(
+                            first_hit_pos, N, V, s.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
+                        ) * s.W * m;
+
+                    updateR(r_st, s, w);
+                }
+            }
+        }
+
+        Sample chosen = r.sample_chosen;
+        float wy = r.total_weight / phat1(
+                    chosen.path[1], N, V, chosen.path[2].xyz, m_albedo.xyz, m_roughness, m_metallicity
+                );
+
+        Sample pixel_sample = chosen;
+        pixel_sample.W = wy;
+
+        // Now calculate the visibility term
+        out_samples[width * window_coord.y + window_coord.x] = pixel_sample;
+
+        vec4 shadow_hpos;
+        QueryResult shadow_q;
+        vec3 shadow_normal;
+        uint shadow_mi;
+        bool shadow_result = trace(
+                first_hit_pos + bias_amt * vec4(first_hit_normal, 0.0) * 3.0, pixel_sample.path[2], shadow_hpos, shadow_q, shadow_normal, shadow_mi
+            );
+
+        frag_color.xyz = shadow_result ? vec3(0.0) : pixel_sample.W * texture(skybox, pixel_sample.path[2].xyz).xyz * brdf(
+                    N,
+                    V,
+                    pixel_sample.path[2].xyz,
+                    m_albedo.xyz,
+                    m_roughness,
+                    m_metallicity
+                );
+    } else {
+        frag_color = texture(skybox, cam_ray_dir.xyz);
+    }
+
+    imageStore(out_img, tcoord, frag_color);
+}

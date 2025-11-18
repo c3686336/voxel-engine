@@ -41,19 +41,20 @@ int main(int argc, char** argv) {
 
     glfwInit();
 
-    Renderer renderer(
-        std::filesystem::path("simple.vert"),
-        std::filesystem::path("simple.frag"), 1920, 1080
-    );
+    const GLFWvidmode* vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    float xscale, yscale;
+    glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+
+    SPDLOG_INFO("Content scale x: {}, y: {}", xscale, yscale);
+
+    Renderer renderer(static_cast<int>(1920), static_cast<int>(1080));
+
     renderer.use_cubemap(
         {"res/right.jpg", "res/left.jpg", "res/top.jpg", "res/bottom.jpg",
          "res/front.jpg", "res/back.jpg"}
     );
 
     entt::registry registry;
-
-    auto ball1 = registry.create();
-    auto ball2 = registry.create();
 
     SPDLOG_INFO("Creating matid list");
     MatID_t white = renderer.register_material({glm::vec4(1.0, 1.0, 1.0, 1.0)});
